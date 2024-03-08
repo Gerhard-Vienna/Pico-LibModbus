@@ -1,0 +1,17 @@
+// Copy this file to wifi.h and modify with your network data
+
+#ifndef WIFI_H
+#define WIFI_H
+
+#define WIFI_SSID "My-Wifi-SSID"
+#define WIFI_PASSWORD "My-Wifi-password"
+
+// This IP is used by the clients in the "tests" subdir to connect
+// to the appropriate test-server (libmodbus/tests).
+//
+// The SERVER_IP is the IP of the network interface on your PC.
+// (If you have more than one interface, use the one that is in the
+// same LAN as the RP2040)
+#define SERVER_IP "10.0.0.1"
+
+#endif //WIFI_H

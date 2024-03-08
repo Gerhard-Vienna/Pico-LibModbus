@@ -1,0 +1,269 @@
+# Configuration for telegraf agent
+[agent]
+  ## Default data collection interval for all inputs
+  interval = "10s"
+  ## Rounds collection interval to 'interval'
+  ## ie, if interval="10s" then always collect on :00, :10, :20, etc.
+  round_interval = true
+
+  ## Telegraf will send metrics to outputs in batches of at most
+  ## metric_batch_size metrics.
+  ## This controls the size of writes that Telegraf sends to output plugins.
+  metric_batch_size = 1000
+
+  ## Maximum number of unwritten metrics per output.  Increasing this value
+  ## allows for longer periods of output downtime without dropping metrics at the
+  ## cost of higher maximum memory usage.
+  metric_buffer_limit = 10000
+
+  ## Collection jitter is used to jitter the collection by a random amount.
+  ## Each plugin will sleep for a random time within jitter before collecting.
+  ## This can be used to avoid many plugins querying things like sysfs at the
+  ## same time, which can have a measurable effect on the system.
+  collection_jitter = "0s"
+
+  ## Default flushing interval for all outputs. Maximum flush_interval will be
+  ## flush_interval + flush_jitter
+  flush_interval = "10s"
+  ## Jitter the flush interval by a random amount. This is primarily to avoid
+  ## large write spikes for users running a large number of telegraf instances.
+  ## ie, a jitter of 5s and interval 10s means flushes will happen every 10-15s
+  flush_jitter = "0s"
+
+  ## By default or when set to "0s", precision will be set to the same
+  ## timestamp order as the collection interval, with the maximum being 1s.
+  ##   ie, when interval = "10s", precision will be "1s"
+  ##       when interval = "250ms", precision will be "1ms"
+  ## Precision will NOT be used for service inputs. It is up to each individual
+  ## service input to set the timestamp at the appropriate precision.
+  ## Valid time units are "ns", "us" (or "µs"), "ms", "s".
+  precision = ""
+
+  ## Log at debug level.
+  # debug = false
+  ## Log only error level messages.
+  # quiet = false
+
+  ## Log target controls the destination for logs and can be one of "file",
+  ## "stderr" or, on Windows, "eventlog".  When set to "file", the output file
+  ## is determined by the "logfile" setting.
+  # logtarget = "file"
+
+  ## Name of the file to be logged to when using the "file" logtarget.  If set to
+  ## the empty string then logs are written to stderr.
+  # logfile = ""
+
+  ## The logfile will be rotated after the time interval specified.  When set
+  ## to 0 no time based rotation is performed.  Logs are rotated only when
+  ## written to, if there is no log activity rotation may be delayed.
+  # logfile_rotation_interval = "0d"
+
+  ## The logfile will be rotated when it becomes larger than the specified
+  ## size.  When set to 0 no size based rotation is performed.
+  # logfile_rotation_max_size = "0MB"
+
+  ## Maximum number of rotated archives to keep, any older logs are deleted.
+  ## If set to -1, no archives are removed.
+  # logfile_rotation_max_archives = 5
+
+  ## Pick a timezone to use when logging or type 'local' for local time.
+  ## Example: America/Chicago
+  # log_with_timezone = ""
+
+  ## Override default hostname, if empty use os.Hostname()
+  hostname = ""
+  ## If set to true, do no set the "host" tag in the telegraf agent.
+  omit_hostname = false
+[[outputs.influxdb_v2]]
+  ## The URLs of the InfluxDB cluster nodes.
+  ##
+  ## Multiple URLs can be specified for a single cluster, only ONE of the
+  ## urls will be written to each interval.
+  ##   ex: urls = ["https://us-west-2-1.aws.cloud2.influxdata.com"]
+  urls = ["http://localhost:8086"]
+
+  ## Token for authentication.
+  token = "YOUR TOKEN"
+
+  ## Organization is the name of the organization you wish to write to; must exist.
+  organization = "YOUR ORGANIZATION"
+
+  ## Destination bucket to write into.
+  bucket = "pico-weather-server"
+
+  ## The value of this tag will be used to determine the bucket.  If this
+  ## tag is not set the 'bucket' option is used as the default.
+  # bucket_tag = ""
+
+  ## If true, the bucket tag will not be added to the metric.
+  # exclude_bucket_tag = false
+
+  ## Timeout for HTTP messages.
+  # timeout = "5s"
+
+  ## Additional HTTP headers
+  # http_headers = {"X-Special-Header" = "Special-Value"}
+
+  ## HTTP Proxy override, if unset values the standard proxy environment
+  ## variables are consulted to determine which proxy, if any, should be used.
+  # http_proxy = "http://corporate.proxy:3128"
+
+  ## HTTP User-Agent
+  # user_agent = "telegraf"
+
+  ## Content-Encoding for write request body, can be set to "gzip" to
+  ## compress body or "identity" to apply no encoding.
+  # content_encoding = "gzip"
+
+  ## Enable or disable uint support for writing uints influxdb 2.0.
+  # influx_uint_support = false
+
+  ## Optional TLS Config for use on HTTP connections.
+  # tls_ca = "/etc/telegraf/ca.pem"
+  # tls_cert = "/etc/telegraf/cert.pem"
+  # tls_key = "/etc/telegraf/key.pem"
+  ## Use TLS but skip chain & host verification
+  # insecure_skip_verify = false
+# Retrieve data from MODBUS slave devices
+[[inputs.modbus]]
+  ## Connection Configuration
+  ##
+  ## The plugin supports connections to PLCs via MODBUS/TCP, RTU over TCP, ASCII over TCP or
+  ## via serial line communication in binary (RTU) or readable (ASCII) encoding
+  ##
+  ## Device name
+  name = "WeatherStation"
+
+  ## Slave ID - addresses a MODBUS device on the bus
+  ## Range: 0 - 255 [0 = broadcast; 248 - 255 = reserved]
+  slave_id = 1
+
+  ## Timeout for each request
+  timeout = "2s"
+
+  ## Maximum number of retries and the time to wait between retries
+  ## when a slave-device is busy.
+  # busy_retries = 0
+  # busy_retries_wait = "100ms"
+
+  # TCP - connect via Modbus/TCP
+  controller = "tcp://MODBUS_SERVER_IP:502"
+
+  ## Serial (RS485; RS232)
+  # controller = "file:///dev/ttyUSB0"
+  # baud_rate = 9600
+  # data_bits = 8
+  # parity = "N"
+  # stop_bits = 1
+
+  ## For Modbus over TCP you can choose between "TCP", "RTUoverTCP" and "ASCIIoverTCP"
+  ## default behaviour is "TCP" if the controller is TCP
+  ## For Serial you can choose between "RTU" and "ASCII"
+  # transmission_mode = "RTU"
+
+  ## Trace the connection to the modbus device as debug messages
+  ## Note: You have to enable telegraf's debug mode to see those messages!
+  # debug_connection = false
+
+  ## Define the configuration schema
+  ##  |---register -- define fields per register type in the original style (only supports one slave ID)
+  ##  |---request  -- define fields on a requests base
+  configuration_type = "register"
+
+  ## --- "register" configuration style ---
+
+  ## Measurements
+  ##
+
+  ## Digital Variables, Discrete Inputs and Coils
+  ## measurement - the (optional) measurement name, defaults to "modbus"
+  ## name        - the variable name
+  ## address     - variable address
+
+  discrete_inputs = [
+  ]
+  coils = [
+    { name = "temperature_scale",     address = [0]},
+  ]
+
+  ## Analog Variables, Input Registers and Holding Registers
+  ## measurement - the (optional) measurement name, defaults to "modbus"
+  ## name        - the variable name
+  ## byte_order  - the ordering of bytes
+  ##  |---AB, ABCD   - Big Endian
+  ##  |---BA, DCBA   - Little Endian
+  ##  |---BADC       - Mid-Big Endian
+  ##  |---CDAB       - Mid-Little Endian
+  ## data_type   - INT16, UINT16, INT32, UINT32, INT64, UINT64,
+  ##               FLOAT32-IEEE, FLOAT64-IEEE (the IEEE 754 binary representation)
+  ##               FLOAT32, FIXED, UFIXED (fixed-point representation on input)
+  ## scale       - the final numeric variable representation
+  ## address     - variable address
+
+  holding_registers = [
+    { name = "station_height", byte_order = "AB",  data_type = "UINT16", scale=1.0,  address = [0]},
+  ]
+  input_registers = [
+    { name = "temperature",   byte_order = "AB",   data_type = "FIXED",        scale=0.1, address = [0]},
+    { name = "humidity",      byte_order = "AB",   data_type = "FIXED",        scale=0.1, address = [1]},
+    { name = "preasure",      byte_order = "AB",   data_type = "FIXED",        scale=0.1, address = [2]},
+    { name = "abs_humidity",  byte_order = "BADC", data_type = "FLOAT32-IEEE", scale=1.0, address = [3,4]},
+    { name = "dewpoint",      byte_order = "BADC", data_type = "FLOAT32-IEEE", scale=1.0, address = [5,6]},
+    { name = "red_preasure",  byte_order = "BADC", data_type = "FLOAT32-IEEE", scale=1.0, address = [7,8]}
+  ]
+
+
+  ## --- "request" configuration style ---
+
+  ## Per request definition
+  ##
+
+  ## Define a request sent to the device
+  ## Multiple of those requests can be defined. Data will be collated into metrics at the end of data collection.
+
+  [[inputs.modbus.request]]
+    slave_id = 1
+    byte_order = "ABCD"
+    register = "holding"
+    fields = [
+      { address=0, name="height",       type="INT16",   scale=1.0   },
+    ]
+
+    [inputs.modbus.request.tags]
+      configuration = "setup"
+
+  [[inputs.modbus.request]]
+    slave_id = 1
+    byte_order = "ABCD"
+    register = "input"
+    fields = [
+      { address=0, name="temperature", type="INT16", scale=0.1        },  # will result in FLOAT64 field
+      { address=1, name="humidity",    type="INT16", scale=0.1        },  # will result in FLOAT64 field
+      { address=2, name="preasure",    type="INT16", scale=0.1        },  # will result in FLOAT64 field
+    ]
+
+    [inputs.modbus.request.tags]
+      origin = "measured"
+
+  [[inputs.modbus.request]]
+    slave_id = 1
+    byte_order = "BADC"
+    register = "input"
+    fields = [
+      { address=3, name="abs-humidity", type="FLOAT32",   scale=1.0        },  # will result in FLOAT64 field
+      { address=5, name="dewpoint",     type="FLOAT32",   scale=1.0        },  # will result in FLOAT64 field
+      { address=7, name="red-preasure", type="FLOAT32",   scale=1.0        },  # will result in FLOAT64 field
+    ]
+
+    [inputs.modbus.request.tags]
+      origin = "derived"
+
+
+  ## Enable workarounds required by some devices to work correctly
+  # [inputs.modbus.workarounds]
+    ## Pause between read requests sent to the device. This might be necessary for (slow) serial devices.
+    # pause_between_requests = "0ms"
+    ## Close the connection after every gather cycle. Usually the plugin closes the connection after a certain
+    ## idle-timeout, however, if you query a device with limited simultaneous connectivity (e.g. serial devices)
+    ## from multiple instances you might want to only stay connected during gather and disconnect afterwards.
+    # close_connection_after_gather = false

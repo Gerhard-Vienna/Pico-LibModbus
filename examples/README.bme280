@@ -1,0 +1,16 @@
+Attaching a BME280 temperature/humidity/pressure sensor via I2C
+
+This shows how to connect the Raspberry Pi Pico to a BME280 temperature/humidity/pressure. The particular device used can be interfaced via I2C or SPI, we are using I2C, and interfacing at 3.3 V.
+
+
+Wiring information
+
+Wiring up the device requires 4 jumpers as follows:
+
+   * GPIO 4 (pin  6) I2C0 SDA -> SDA on bme280 board
+   * GPIO 5 (pin  7) I2C0 SCL -> SCL on bme280 board
+   * GND    (pin  3)          -> GND on bme280 board
+   * 3.3 V  (pin 36)          -> VCC on bme280 board
+
+The example here uses I2C port 0. Power is supplied from the 3.3V pin.
+
