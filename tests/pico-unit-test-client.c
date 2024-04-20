@@ -95,6 +95,8 @@ void main(void)
         return;
     }
 
+    printf("pico-unit-test-client\n\n");
+
     cyw43_arch_enable_sta_mode();
 
     printf("Connecting to WiFi... ");

@@ -59,7 +59,7 @@ int main(void)
     /* Maximum file descriptor number */
     int fdmax;
 
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
     printf("\nNot implemented for PICO-W!\n");
     printf("Use \"bandwidth-server-one\" instead.\n\n");
     exit(1);

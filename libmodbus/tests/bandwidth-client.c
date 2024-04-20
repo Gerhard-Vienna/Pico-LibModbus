@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     uint32_t start;
     uint32_t end;
     uint32_t bytes;
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     uint32_t rate;
 #else
     float rate;
@@ -66,14 +66,14 @@ int main(int argc, char *argv[])
     int rc;
     int n_loop;
     int use_backend;
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
     char *ip_or_device;
 #endif
 
     if (argc > 1) {
         if (strcmp(argv[1], "tcp") == 0) {
             use_backend = TCP;
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
             n_loop = 100000;
 #else
             if (argc > 2) {
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
             use_backend = RTU;
             n_loop = 100;
         } else {
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
             printf("Usage:\n  %s [tcp|rtu] - Modbus client to measure data bandwidth\n\n",
                    argv[0]);
 #else
@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
     } else {
         /* By default */
         use_backend = TCP;
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
         n_loop = 100000;
 #else
         ip_or_device = "127.0.0.1";
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     }
 
     if (use_backend == TCP) {
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
         ctx = modbus_new_tcp("127.0.0.1", 1502);
 #else
         ctx = modbus_new_tcp(ip_or_device, 1502);
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
     modbus_set_response_timeout(ctx, 1, 0);
 #endif
 
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
 
     rate = (n_loop * nb_points) * G_MSEC_PER_SEC / (end - start);
     printf("Transfer rate in points/seconds:\n");
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
 #else
     printf("* %.0f p/s\n", rate);
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
     printf("\n");
 
     bytes = n_loop * (nb_points / 8) + ((nb_points % 8) ? 1 : 0);
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     rate = bytes / 1024 * G_MSEC_PER_SEC / (end - start);
 #else
     rate = (float)bytes / 1024 * G_MSEC_PER_SEC / (end - start);
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
     printf("* %d x %d values\n", n_loop, nb_points);
     printf("* %.3f ms for %d bytes\n", elapsed, bytes);
 
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
 #else
     printf("* %.2f KiB/s\n", rate);
@@ -182,13 +182,13 @@ int main(int argc, char *argv[])
     printf("Values and TCP Modbus overhead:\n");
     printf("* %d x %d bytes\n", n_loop, bytes);
     bytes = n_loop * bytes;
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     rate = bytes / 1024 * G_MSEC_PER_SEC / (end - start);
 #else
     rate = (float)bytes / 1024 * G_MSEC_PER_SEC / (end - start);
 #endif
     printf("* %.3f ms for %d bytes\n", elapsed, bytes);
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
 #else
     printf("* %.2f KiB/s\n", rate);
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 
     rate = (n_loop * nb_points) * G_MSEC_PER_SEC / (end - start);
     printf("Transfer rate in points/seconds:\n");
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
 #else
     printf("* %.0f p/s\n", rate);
@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
     printf("\n");
 
     bytes = n_loop * nb_points * sizeof(uint16_t);
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     rate = bytes / 1024 * G_MSEC_PER_SEC / (end - start);
 #else
     rate = (float)bytes / 1024 * G_MSEC_PER_SEC / (end - start);
@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
     printf("Values:\n");
     printf("* %d x %d values\n", n_loop, nb_points);
     printf("* %.3f ms for %d bytes\n", elapsed, bytes);
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
 #else
     printf("* %.2f KiB/s\n", rate);
@@ -239,13 +239,13 @@ int main(int argc, char *argv[])
     printf("Values and TCP Modbus overhead:\n");
     printf("* %d x %d bytes\n", n_loop, bytes);
     bytes = n_loop * bytes;
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     rate = bytes / 1024 * G_MSEC_PER_SEC / (end - start);
 #else
     rate = (float)bytes / 1024 * G_MSEC_PER_SEC / (end - start);
 #endif
     printf("* %.3f ms for %d bytes\n", elapsed, bytes);
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
 #else
     printf("* %.2f KiB/s\n", rate);
@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
 
     rate = (n_loop * nb_points) * G_MSEC_PER_SEC / (end - start);
     printf("Transfer rate in points/seconds:\n");
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
 #else
     printf("* %.0f p/s\n", rate);
@@ -277,7 +277,7 @@ int main(int argc, char *argv[])
     printf("\n");
 
     bytes = n_loop * nb_points * sizeof(uint16_t);
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     rate = bytes / 1024 * G_MSEC_PER_SEC / (end - start);
 #else
     rate = (float)bytes / 1024 * G_MSEC_PER_SEC / (end - start);
@@ -285,7 +285,7 @@ int main(int argc, char *argv[])
     printf("Values:\n");
     printf("* %d x %d values\n", n_loop, nb_points);
     printf("* %.3f ms for %d bytes\n", elapsed, bytes);
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
 #else
     printf("* %.2f KiB/s\n", rate);
@@ -297,13 +297,13 @@ int main(int argc, char *argv[])
     printf("Values and TCP Modbus overhead:\n");
     printf("* %d x %d bytes\n", n_loop, bytes);
     bytes = n_loop * bytes;
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     rate = bytes / 1024 * G_MSEC_PER_SEC / (end - start);
 #else
     rate = (float)bytes / 1024 * G_MSEC_PER_SEC / (end - start);
 #endif
     printf("* %.3f ms for %d bytes\n", elapsed, bytes);
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
 #else
     printf("* %.2f KiB/s\n", rate);

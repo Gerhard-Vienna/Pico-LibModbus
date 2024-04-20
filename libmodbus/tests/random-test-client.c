@@ -47,7 +47,7 @@
 /* At each loop, the program works in the range ADDRESS_START to
  * ADDRESS_END then ADDRESS_START + 1 to ADDRESS_END and so on.
  */
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
 int main(void)
 #else
 int main(int argc, char *argv[])
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     uint16_t *tab_rq_registers;
     uint16_t *tab_rw_rq_registers;
     uint16_t *tab_rp_registers;
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
     char *ip_or_device;
 #endif
 
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     */
 
     /* TCP */
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     ctx = modbus_new_tcp("127.0.0.1", 1502);
     modbus_set_debug(ctx, TRUE);
 #else
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     }
 #endif
 
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
     modbus_set_response_timeout(ctx, 1, 0);
 #endif
     modbus_set_debug(ctx, TRUE);

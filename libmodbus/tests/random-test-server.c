@@ -25,7 +25,7 @@
 
 #include <modbus.h>
 
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
 int main(void)
 #else
 int main(int argc, char *argv[])
@@ -34,12 +34,12 @@ int main(int argc, char *argv[])
     int s = -1;
     modbus_t *ctx;
     modbus_mapping_t *mb_mapping;
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
     char *ip_or_device;
 #endif
 
 
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     ctx = modbus_new_tcp("127.0.0.1", 1502);
     /* modbus_set_debug(ctx, TRUE); */
 #else
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     }
 #endif
 
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
     modbus_set_response_timeout(ctx, 1, 0);
 #endif
 
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
             modbus_reply(ctx, query, rc, mb_mapping);
         } else if (rc == -1) {
             /* Connection closed by the client or error */
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
             break;
 #else
             if (s != -1) {

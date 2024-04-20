@@ -86,6 +86,8 @@ void main(void)
         return;
     }
 
+    printf("pico-bandwidth-server\n\n");
+
     cyw43_arch_enable_sta_mode();
 
     printf("Connecting to WiFi...\n");

@@ -101,15 +101,10 @@ int main(int argc, char *argv[])
             use_backend = RTU;
         } else {
             printf("Modbus client for unit testing\n");
-#ifndef PICO_W
-            printf("Usage:\n  %s IP Port\n", argv[0]);
-            printf("Eg. 127.0.0.1 502\n\n");
-#else
-            printf("Usage:\n  %s tcp IP\n", argv[0]);
-            printf("  Eg. %s tcp 10.0.0.1\n\n", argv[0]);
-#endif
+            printf("Usage:\n  %s [tcp|tcppi|rtu]\n", argv[0]);
+            printf("Eg. tcp 127.0.0.1 or rtu /dev/ttyUSB1\n\n");
             exit(1);
-    }
+        }
     } else {
         /* By default */
         use_backend = TCP;
@@ -119,17 +114,17 @@ int main(int argc, char *argv[])
         ip_or_device = argv[2];
     } else {
         switch (use_backend) {
-        case TCP:
-            ip_or_device = "127.0.0.1";
-            break;
-        case TCP_PI:
-            ip_or_device = "::1";
-            break;
-        case RTU:
-            ip_or_device = "/dev/ttyUSB1";
-            break;
-        default:
-            break;
+            case TCP:
+                ip_or_device = "127.0.0.1";
+                break;
+            case TCP_PI:
+                ip_or_device = "::1";
+                break;
+            case RTU:
+                ip_or_device = "/dev/ttyUSB1";
+                break;
+            default:
+                break;
         }
     }
 
@@ -153,7 +148,7 @@ int main(int argc, char *argv[])
         modbus_set_slave(ctx, SERVER_ID);
     }
 
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
     modbus_set_response_timeout(ctx, 1, 0);
 #endif
 
@@ -665,7 +660,7 @@ int main(int argc, char *argv[])
     ASSERT_TRUE(rc == -1 && errno == ETIMEDOUT, "");
 
     /* Wait for reply (0.2 + 0.4 > 0.5 s) and flush before continue */
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     usleep(400000);
     modbus_flush(ctx);
     modbus_set_response_timeout(ctx, 0, 600000);
@@ -693,7 +688,7 @@ int main(int argc, char *argv[])
     /* Restore original response timeout */
     modbus_set_response_timeout(ctx, old_response_to_sec, old_response_to_usec);
 
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     if (use_backend == TCP) {
         /* The test server is only able to test byte timeouts with the TCP
          * backend */
@@ -752,7 +747,7 @@ int main(int argc, char *argv[])
     modbus_free(ctx);
     ctx = NULL;
 
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     /* Test init functions */
     printf("\nTEST INVALID INITIALIZATION:\n");
     ctx = modbus_new_rtu(NULL, 1, 'A', 0, 0);
@@ -868,7 +863,7 @@ int test_server(modbus_t *ctx, int use_backend)
      */
     modbus_get_response_timeout(ctx, &old_response_to_sec, &old_response_to_usec);
 
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
     modbus_set_response_timeout(ctx, 0, 600000);
 #else
     modbus_set_response_timeout(ctx, 1, 0);
@@ -1011,7 +1006,7 @@ int send_crafted_request(modbus_t *ctx,
             }
         }
 
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
         modbus_set_response_timeout(ctx, 1, 500000);
 #endif
         modbus_send_raw_request(ctx, req, req_len * sizeof(uint8_t));

@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     modbus_mapping_t *mb_mapping = NULL;
     int rc;
     int use_backend;
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
     char *ip_or_device;
 #endif
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     if (argc > 1) {
         if (strcmp(argv[1], "tcp") == 0) {
             use_backend = TCP;
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
             if (argc > 2) {
                 ip_or_device = argv[2];
             } else {
@@ -67,13 +67,13 @@ int main(int argc, char *argv[])
     } else {
         /* By default */
         use_backend = TCP;
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
         ip_or_device = "127.0.0.1";
 #endif
     }
 
     if (use_backend == TCP) {
-#ifndef PICO_W
+#ifndef PICO_W_TESTS
         ctx = modbus_new_tcp("127.0.0.1", 1502);
 
 #else
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
         modbus_connect(ctx);
     }
 
-#ifdef PICO_W
+#ifdef PICO_W_TESTS
     modbus_set_response_timeout(ctx, 1, 0);
 #endif
 

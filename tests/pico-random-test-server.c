@@ -112,6 +112,8 @@ int main()
         return 1;
     }
 
+    printf("pico-random-test-server\n\n");
+
     cyw43_arch_enable_sta_mode();
 
     printf("Connecting to WiFi...\n");

@@ -47,7 +47,7 @@ AM_CPPFLAGS = \
     -DLIBEXECDIR=\""$(libexecdir)"\" \
     -I${top_srcdir}/src \
     -I${top_builddir}/src \
-    -DPICO_W
+    -DPICO_W_TESTS
 
 AM_CFLAGS = ${my_CFLAGS}
 
