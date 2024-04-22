@@ -42,21 +42,11 @@ int main(int argc, char *argv[])
     modbus_mapping_t *mb_mapping = NULL;
     int rc;
     int use_backend;
-#ifdef PICO_W_TESTS
-    char *ip_or_device;
-#endif
 
     /* TCP */
     if (argc > 1) {
         if (strcmp(argv[1], "tcp") == 0) {
             use_backend = TCP;
-#ifdef PICO_W_TESTS
-            if (argc > 2) {
-                ip_or_device = argv[2];
-            } else {
-                ip_or_device = "127.0.0.1";
-            }
-#endif
         } else if (strcmp(argv[1], "rtu") == 0) {
             use_backend = RTU;
         } else {
@@ -67,34 +57,24 @@ int main(int argc, char *argv[])
     } else {
         /* By default */
         use_backend = TCP;
-#ifdef PICO_W_TESTS
-        ip_or_device = "127.0.0.1";
-#endif
     }
 
     if (use_backend == TCP) {
 #ifndef PICO_W_TESTS
         ctx = modbus_new_tcp("127.0.0.1", 1502);
-
 #else
-        printf("Starting server at %s:%d\n", ip_or_device, 1502);
-        ctx = modbus_new_tcp(ip_or_device, 1502);
-        if (ctx == NULL) {
-            fprintf(stderr, "Unable to allocate libmodbus context\n");
-            return -1;
-        }
+       // this directs modbus_tcp_listen() to listen on INADDR_ANY
+        ctx = modbus_new_tcp("0.0.0.0", 1502);
+        modbus_set_response_timeout(ctx, 1, 0);
 #endif
         s = modbus_tcp_listen(ctx, 1);
         modbus_tcp_accept(ctx, &s);
+
     } else {
         ctx = modbus_new_rtu("/dev/ttyUSB0", 115200, 'N', 8, 1);
         modbus_set_slave(ctx, 1);
         modbus_connect(ctx);
     }
-
-#ifdef PICO_W_TESTS
-    modbus_set_response_timeout(ctx, 1, 0);
-#endif
 
     mb_mapping =
         modbus_mapping_new(MODBUS_MAX_READ_BITS, 0, MODBUS_MAX_READ_REGISTERS, 0);

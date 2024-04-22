@@ -25,41 +25,19 @@
 
 #include <modbus.h>
 
-#ifndef PICO_W_TESTS
 int main(void)
-#else
-int main(int argc, char *argv[])
-#endif
 {
     int s = -1;
     modbus_t *ctx;
     modbus_mapping_t *mb_mapping;
-#ifdef PICO_W_TESTS
-    char *ip_or_device;
-#endif
-
 
 #ifndef PICO_W_TESTS
     ctx = modbus_new_tcp("127.0.0.1", 1502);
     /* modbus_set_debug(ctx, TRUE); */
 #else
-    if (argc > 1) {
-        ip_or_device = argv[1];
-        printf("Starting server at %s:%d\n", ip_or_device, 1502);
-        ctx = modbus_new_tcp(ip_or_device, 1502);
-        if (ctx == NULL) {
-            fprintf(stderr, "Unable to allocate libmodbus context\n");
-            return -1;
-        }
-    }
-    else {
-        printf("Usage:\n  %s IP\n", argv[0]);
-        printf("  Eg. %s 10.0.0.1\n\n", argv[0]);
-        exit(1);
-    }
-#endif
-
-#ifdef PICO_W_TESTS
+    // this directs modbus_tcp_listen() to listen on INADDR_ANY
+    ctx = modbus_new_tcp("0.0.0.0", 1502);
+    /* modbus_set_debug(ctx, TRUE); */
     modbus_set_response_timeout(ctx, 1, 0);
 #endif
 

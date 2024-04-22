@@ -79,7 +79,12 @@ int main(int argc, char *argv[])
     } else {
         switch (use_backend) {
         case TCP:
+#ifndef PICO_W_TESTS
             ip_or_device = "127.0.0.1";
+#else
+            // this directs modbus_tcp_listen() to listen on INADDR_ANY
+            ip_or_device = "0.0.0.0";
+#endif
             break;
         case TCP_PI:
             ip_or_device = "::1";
