@@ -3,6 +3,7 @@ Docs
 libmodbus-3*
 build-aux
 wifi.h
+pico_sdk_import.cmake
 *.conf
 *save*
 *~
