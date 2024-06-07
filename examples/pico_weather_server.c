@@ -165,6 +165,9 @@ void main(void) {
     if(multicore_fifo_pop_blocking())
         printf("MB-Server ready on core 1\n");
 
+    mb_mapping->tab_bits[0] = 0;    // °C
+    mb_mapping->tab_registers[0] = height;
+
     initializeBme280();
     for(;;){
         /*

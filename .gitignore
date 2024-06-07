@@ -48,7 +48,7 @@ libmodbus/tests/unit-test.h
 
 libmodbus/src/Makefile
 libmodbus/src/Makefile.in
-libmodbus/src/modbus-version.h
+#libmodbus/src/modbus-version.h
 libmodbus/tests/Makefile
 libmodbus/tests/Makefile.in
 
