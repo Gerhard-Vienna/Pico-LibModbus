@@ -105,7 +105,7 @@ static void tcp_connection_err(void *arg, err_t err) {
     modbus_t *ctx = (modbus_t *) arg;
     modbus_tcp_t *ctx_tcp  = (modbus_tcp_t *) ctx->backend_data;;
 
-    ctx_tcp->waitConnect = false; // NEU
+    ctx_tcp->waitConnect = false;
     ctx_tcp->connected = false;
     errno = ECONNRESET;
 
@@ -189,10 +189,6 @@ err_t tcp_connection_recved(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err
 static err_t tcp_connection_exit(void *arg)
 {
     DEBUG_printf("+++ tcp_connection_exit()\n");
-
-    modbus_t *ctx = (modbus_t *) arg;
-    modbus_tcp_t *ctx_tcp  = (modbus_tcp_t *) ctx->backend_data;;
-
     return tcp_connection_close(arg);
 }
 
@@ -202,7 +198,7 @@ static err_t tcp_connection_close(void *arg)
 
     modbus_t *ctx = (modbus_t *) arg;
     modbus_tcp_t *ctx_tcp  = (modbus_tcp_t *) ctx->backend_data;;
-    ctx_tcp->connected = false; //NEU
+    ctx_tcp->connected = false;
 
     err_t err = ERR_OK;
     if (ctx_tcp->client_pcb != NULL) {
@@ -373,7 +369,7 @@ int modbus_tcp_listen(modbus_t *ctx, int nb_connection)
     err_t err = tcp_bind(pcb, NULL, ctx_tcp->port);
     if (err) {
         if (ctx->debug)
-            printf("\tfailed to bind to port %d\n");
+            printf("\tfailed to bind to port %d\n", ctx_tcp->port);
         return false;
     }
 
@@ -445,19 +441,21 @@ static int _modbus_tcp_connect(modbus_t *ctx)
     ctx_tcp->waitConnect = true;
     err_t err = tcp_connect(
         ctx_tcp->client_pcb, &remote_addr, ctx_tcp->port, tcp_client_connected);
-    DEBUG_printf("\tResult from tcp_connect(): %s (%d)\n", lwip_err_str(err), err);
+    if (ctx->debug)
+        printf("\tResult from tcp_connect(): %s (%d)\n", lwip_err_str(err), err);
+
     cyw43_arch_lwip_end();
 
     while(ctx_tcp->waitConnect == true){
         sleep_ms(_WAIT_LOOP_INTERVAL_MS);
     }
     if(ctx_tcp->connected){
-        if (ctx->debug || true) //NEU
+        if (ctx->debug)
             printf("\tConnect: OK\n");
         return 0;
     }
     else{
-        if (ctx->debug || true) //NEU
+        if (ctx->debug)
             printf("\tConnect: FAILED\n");
         return -1;
     }
@@ -520,7 +518,7 @@ static ssize_t _modbus_tcp_recv(modbus_t *ctx, uint8_t *rsp, int rsp_length)
         }
         if (ctx->debug)
             printf("\tremote closed connection\n");
-        return -1; // NEU
+        return -1;
     }
 
     numBytes = rsp_length < ctx_tcp->recv_len ? rsp_length : ctx_tcp->recv_len;
@@ -543,8 +541,8 @@ static ssize_t _modbus_tcp_send(modbus_t *ctx, const uint8_t *req, int req_lengt
 
     if(!ctx_tcp->connected){
         if (ctx->debug)
-            printf("\tNot sending, connection is down\n", req_length);
-        errno = ECONNRESET; //NEU
+            printf("\tNot sending %d byte(s), connection is down\n", req_length);
+        errno = ECONNRESET;
         return(-1);
     }
 

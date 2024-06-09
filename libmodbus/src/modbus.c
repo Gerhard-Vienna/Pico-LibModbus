@@ -437,8 +437,13 @@ int _modbus_receive_msg(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type)
 
     while (length_to_read != 0) {
         if (ctx->debug) {
+#ifndef PICO_W
             printf("_modbus_receive_msg(modbus,c): l:%u, sec:%ld usec:%ld\n",
                length_to_read, tv.tv_sec, tv.tv_usec);
+#else
+            printf("_modbus_receive_msg(modbus,c): l:%u, sec:%lld usec:%ld\n",
+                   length_to_read, tv.tv_sec, tv.tv_usec);
+#endif
         }
         rc = ctx->backend->select(ctx, &rset, p_tv, length_to_read);
         if (rc == -1) {
