@@ -1,13 +1,4 @@
 /*
- * Copyright © Gerhard Schiller 2024, <gerhard.schiller@pm.me>
- *
- * SPDX-License-Identifier: BSD-3-Clause
- *
- * This file has been adapted from the libmodbus-file "bandwidth-server-many-up.c"
- *
- * The original copyright notice is below.
- */
-/*
  * Copyright © Stéphane Raimbault <stephane.raimbault@gmail.com>
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -26,7 +17,9 @@
 #include <ws2tcpip.h>
 #else
 #include <arpa/inet.h>
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif /* HAVE_NETINET_IN_H */
 #include <sys/select.h>
 #include <sys/socket.h>
 #endif
@@ -58,12 +51,6 @@ int main(void)
     fd_set rdset;
     /* Maximum file descriptor number */
     int fdmax;
-
-#ifdef PICO_W_TESTS
-    printf("\nNot implemented for PICO-W!\n");
-    printf("Use \"bandwidth-server-one\" instead.\n\n");
-    exit(1);
-#endif
 
     ctx = modbus_new_tcp("127.0.0.1", 1502);
 

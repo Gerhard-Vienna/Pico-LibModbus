@@ -1,6 +1,6 @@
 ############################################
 #
-# This is the telegraf configuration for the server: pico_server_example
+# This is the telegraf configuration for the server: pico-server-example
 #
 ############################################
 
@@ -223,7 +223,7 @@
   ]
   input_registers = [
     { name = "heartbeat",     byte_order = "AB",   data_type = "UINT16",  scale=1.0, address = [0]},
-    { name = "temperature_f", byte_order = "BADC", data_type = "FLOAT32-IEEE", scale=1.0, address = [1,2]},
+    { name = "temperature_f", byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale=1.0, address = [1,2]},
     { name = "temperature_i", byte_order = "AB",   data_type = "FIXED",        scale=0.1, address = [3]},
     { name = "rtc_year",      byte_order = "AB",   data_type = "UINT16",  scale=1.0, address = [4]},
     { name = "rtc_mon",       byte_order = "AB",   data_type = "UINT16",  scale=1.0, address = [5]},
@@ -334,7 +334,7 @@
   [[inputs.modbus.request]]
     ## Input example with type conversions
     slave_id = 1
-    byte_order = "BADC"
+    byte_order = "ABCD"
     register = "input"
     fields = [
       { address=1,  name="temperature_f",    type="FLOAT32",   scale=1.0,  measurement="Temperature"},

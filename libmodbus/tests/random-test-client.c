@@ -1,12 +1,12 @@
 /*
- * Copyright © Gerhard Schiller 2024, <gerhard.schiller@pm.me>
+ * Copyright © Gerhard Schiller 2024-2025, <gerhard.schiller@pm.me>
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * This file has been adapted from the libmodbus-file "random-test-client.c"
+ * This file has been adapted from the libmodbus-file "unit-test-client.c"
  * to test a modbus server running on a RP2040.
  *
- * Use tests/pico-random-test-server as the server to test this client.
+ * Use tests/pico-unit-test-server as the server to test this client.
  *
  * The original copyright notice is below.
  */
@@ -39,7 +39,7 @@
    All these functions are called with random values on a address
    range defined by the following defines.
 */
-#define LOOP          1
+#define LOOP          10
 #define SERVER_ID     17
 #define ADDRESS_START 0
 #define ADDRESS_END   99
@@ -47,11 +47,7 @@
 /* At each loop, the program works in the range ADDRESS_START to
  * ADDRESS_END then ADDRESS_START + 1 to ADDRESS_END and so on.
  */
-#ifndef PICO_W_TESTS
-int main(void)
-#else
 int main(int argc, char *argv[])
-#endif
 {
     modbus_t *ctx;
     int rc;
@@ -64,36 +60,15 @@ int main(int argc, char *argv[])
     uint16_t *tab_rq_registers;
     uint16_t *tab_rw_rq_registers;
     uint16_t *tab_rp_registers;
-#ifdef PICO_W_TESTS
-    char *ip_or_device;
-#endif
-
-    /* RTU */
-    /*
-        ctx = modbus_new_rtu("/dev/ttyUSB0", 19200, 'N', 8, 1);
-        modbus_set_slave(ctx, SERVER_ID);
-    */
 
     /* TCP */
-#ifndef PICO_W_TESTS
-    ctx = modbus_new_tcp("127.0.0.1", 1502);
-    modbus_set_debug(ctx, TRUE);
-#else
-    if (argc > 1) {
-        ip_or_device = argv[1];
-        ctx = modbus_new_tcp(ip_or_device, 1502);
+    if(argc == 2){
+        ctx = modbus_new_tcp(argv[1], 1502);
     }
-    else {
-        printf("Usage:\n  %s IP\n", argv[0]);
-        printf("  Eg. %s 10.0.0.1\n\n", argv[0]);
-        exit(1);
+    else{
+        ctx = modbus_new_tcp("127.0.0.1", 1502);
     }
-#endif
-
-#ifdef PICO_W_TESTS
-    modbus_set_response_timeout(ctx, 1, 0);
-#endif
-    modbus_set_debug(ctx, TRUE);
+    // modbus_set_debug(ctx, TRUE);
 
     if (modbus_connect(ctx) == -1) {
         fprintf(stderr, "Connection failed: %s\n", modbus_strerror(errno));
@@ -120,6 +95,7 @@ int main(int argc, char *argv[])
     memset(tab_rw_rq_registers, 0, nb * sizeof(uint16_t));
 
     nb_loop = nb_fail = 0;
+    modbus_set_response_timeout(ctx, 1, 0);
     while (nb_loop++ < LOOP) {
         for (addr = ADDRESS_START; addr < ADDRESS_END; addr++) {
             int i;

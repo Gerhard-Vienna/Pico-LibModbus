@@ -129,9 +129,8 @@ static uint16_t crc16(uint8_t *buffer, uint16_t buffer_length)
     return (crc_hi << 8 | crc_lo);
 }
 
-static int _modbus_rtu_prepare_response_tid(const uint8_t *req, int *req_length)
+static int _modbus_rtu_get_response_tid(const uint8_t *req)
 {
-    (*req_length) -= _MODBUS_RTU_CHECKSUM_LENGTH;
     /* No TID */
     return 0;
 }
@@ -352,23 +351,11 @@ static int _modbus_rtu_check_integrity(modbus_t *ctx, uint8_t *msg, const int ms
     uint16_t crc_received;
     int slave = msg[0];
 
-    /* Filter on the Modbus unit identifier (slave) in RTU mode to avoid useless
-     * CRC computing. */
-    if (slave != ctx->slave && slave != MODBUS_BROADCAST_ADDRESS) {
-        if (ctx->debug) {
-            printf("Request for slave %d ignored (not %d)\n", slave, ctx->slave);
-        }
-        /* Following call to check_confirmation handles this error */
-        return 0;
-    }
-
     crc_calculated = crc16(msg, msg_length - 2);
     crc_received = (msg[msg_length - 1] << 8) | msg[msg_length - 2];
 
     /* Check CRC of msg */
-    if (crc_calculated == crc_received) {
-        return msg_length;
-    } else {
+    if (crc_calculated != crc_received) {
         if (ctx->debug) {
             fprintf(stderr,
                     "ERROR CRC received 0x%0X != CRC calculated 0x%0X\n",
@@ -382,6 +369,17 @@ static int _modbus_rtu_check_integrity(modbus_t *ctx, uint8_t *msg, const int ms
         errno = EMBBADCRC;
         return -1;
     }
+
+    /* Filter on the Modbus unit identifier (slave) in RTU mode */
+    if (slave != ctx->slave && slave != MODBUS_BROADCAST_ADDRESS) {
+        if (ctx->debug) {
+            printf("Request for slave %d ignored (not %d)\n", slave, ctx->slave);
+        }
+        /* Following call to check_confirmation handles this error */
+        return 0;
+    }
+
+    return msg_length;
 }
 
 /* Sets up a serial port for RTU communications */
@@ -640,8 +638,8 @@ static int _modbus_rtu_connect(modbus_t *ctx)
        signals and so forth) will affect your process
 
        Timeouts are ignored in canonical input mode or when the
-       NDELAY option is set on the file via open or fcntl */
-    flags = O_RDWR | O_NOCTTY | O_NDELAY | O_EXCL;
+       NONBLOCK option is set on the file via open or fcntl */
+    flags = O_RDWR | O_NOCTTY | O_NONBLOCK | O_EXCL;
 #ifdef O_CLOEXEC
     flags |= O_CLOEXEC;
 #endif
@@ -818,7 +816,7 @@ static int _modbus_rtu_connect(modbus_t *ctx)
        UNIX serial interface drivers provide the ability to
        specify character and packet timeouts. Two elements of the
        c_cc array are used for timeouts: VMIN and VTIME. Timeouts
-       are ignored in canonical input mode or when the NDELAY
+       are ignored in canonical input mode or when the NONBLOCK
        option is set on the file via open or fcntl.
 
        VMIN specifies the minimum number of characters to read. If
@@ -848,9 +846,9 @@ static int _modbus_rtu_connect(modbus_t *ctx)
        VTIME specifies the amount of time to wait for incoming
        characters in tenths of seconds. If VTIME is set to 0 (the
        default), reads will block (wait) indefinitely unless the
-       NDELAY option is set on the port with open or fcntl.
+       NONBLOCK option is set on the port with open or fcntl.
     */
-    /* Unused because we use open with the NDELAY option */
+    /* Unused because we use open with the NONBLOCK option */
     tios.c_cc[VMIN] = 0;
     tios.c_cc[VTIME] = 0;
 
@@ -1187,7 +1185,7 @@ const modbus_backend_t _modbus_rtu_backend = {
     _modbus_set_slave,
     _modbus_rtu_build_request_basis,
     _modbus_rtu_build_response_basis,
-    _modbus_rtu_prepare_response_tid,
+    _modbus_rtu_get_response_tid,
     _modbus_rtu_send_msg_pre,
     _modbus_rtu_send,
     _modbus_rtu_receive,

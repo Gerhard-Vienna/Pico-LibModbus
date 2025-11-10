@@ -1,3 +1,9 @@
+############################################
+#
+# This is the telegraf configuration for the server: pico-weather-server
+#
+############################################
+
 # Configuration for telegraf agent
 [agent]
   ## Default data collection interval for all inputs
@@ -207,9 +213,9 @@
     { name = "temperature",   byte_order = "AB",   data_type = "FIXED",        scale=0.1, address = [0]},
     { name = "humidity",      byte_order = "AB",   data_type = "FIXED",        scale=0.1, address = [1]},
     { name = "preasure",      byte_order = "AB",   data_type = "FIXED",        scale=0.1, address = [2]},
-    { name = "abs_humidity",  byte_order = "BADC", data_type = "FLOAT32-IEEE", scale=1.0, address = [3,4]},
-    { name = "dewpoint",      byte_order = "BADC", data_type = "FLOAT32-IEEE", scale=1.0, address = [5,6]},
-    { name = "red_preasure",  byte_order = "BADC", data_type = "FLOAT32-IEEE", scale=1.0, address = [7,8]}
+    { name = "abs_humidity",  byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale=1.0, address = [3,4]},
+    { name = "dewpoint",      byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale=1.0, address = [5,6]},
+    { name = "red_preasure",  byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale=1.0, address = [7,8]}
   ]
 
 
@@ -247,7 +253,7 @@
 
   [[inputs.modbus.request]]
     slave_id = 1
-    byte_order = "BADC"
+    byte_order = "ABCD"
     register = "input"
     fields = [
       { address=3, name="abs-humidity", type="FLOAT32",   scale=1.0        },  # will result in FLOAT64 field

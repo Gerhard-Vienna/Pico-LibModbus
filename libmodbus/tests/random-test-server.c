@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * This file has been adapted from the libmodbus-file "bandwidth-server-one.c"
+ * This file has been adapted from the libmodbus-file "random-test-server.c"
  * to test a modbus server running on a RP2040.
  *
  * Use tests/pico-bandwidth-client as the client to query this server.
@@ -62,13 +62,13 @@ int main(void)
         } else if (rc == -1) {
             /* Connection closed by the client or error */
 #ifndef PICO_W_TESTS
-            break;
+            ctx = modbus_new_tcp("127.0.0.1", 1502);
+            /* modbus_set_debug(ctx, TRUE); */
 #else
-            if (s != -1) {
-                close(s);
-            }
-            s = modbus_tcp_listen(ctx, 1);
-            modbus_tcp_accept(ctx, &s);
+            // this directs modbus_tcp_listen() to listen on INADDR_ANY
+            ctx = modbus_new_tcp("0.0.0.0", 1502);
+            /* modbus_set_debug(ctx, TRUE); */
+            modbus_set_response_timeout(ctx, 1, 0);
 #endif
         }
     }

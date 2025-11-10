@@ -31,6 +31,7 @@ typedef int ssize_t;
 // clang-format on
 #include <config.h>
 #include <sys/types.h>
+
 #else // PICO_W
 typedef int ssize_t;
 #endif // PICO_W
@@ -90,7 +91,7 @@ typedef struct _modbus_backend {
     int (*build_request_basis)(
         modbus_t *ctx, int function, int addr, int nb, uint8_t *req);
     int (*build_response_basis)(sft_t *sft, uint8_t *rsp);
-    int (*prepare_response_tid)(const uint8_t *req, int *req_length);
+    int (*get_response_tid)(const uint8_t *req);
     int (*send_msg_pre)(uint8_t *req, int req_length);
     ssize_t (*send)(modbus_t *ctx, const uint8_t *req, int req_length);
     int (*receive)(modbus_t *ctx, uint8_t *req);
@@ -112,6 +113,9 @@ typedef struct _modbus_backend {
 #endif
 } modbus_backend_t;
 
+#ifdef PICO_W
+#include "pico/critical_section.h"
+#endif
 struct _modbus {
     /* Slave address */
     int slave;
@@ -123,6 +127,9 @@ struct _modbus {
     struct timeval response_timeout;
     struct timeval byte_timeout;
     struct timeval indication_timeout;
+#ifdef PICO_W
+    critical_section_t  cs;
+#endif
     const modbus_backend_t *backend;
     void *backend_data;
 };

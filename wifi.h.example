@@ -6,12 +6,24 @@
 #define WIFI_SSID "My-Wifi-SSID"
 #define WIFI_PASSWORD "My-Wifi-password"
 
-// This IP is used by the clients in the "tests" subdir to connect
-// to the appropriate test-server (libmodbus/tests).
-//
-// The SERVER_IP is the IP of the network interface on your PC.
-// (If you have more than one interface, use the one that is in the
-// same LAN as the RP2040)
-#define SERVER_IP "10.0.0.1"
+// Assuming:
+// 		the IP address of the Pico running a server is 10.0.0.100,
+// 		the IP address of the Pico running a client is 10.0.0.101 and
+// 		the workstations IP-address is 10.0.0.5:
+
+
+// For a server that runs on a PICO-W
+#define SERVER_PICO_IP	"10.0.0.100"
+// For a server that runs on the WORKSTATION
+#define SERVER_WS_IP	"10.0.0.5"
+
+// Client on a PICO-W
+#define CLIENT_IP		"10.0.0.101"
+
+// The netmask
+#define NETMASK			"255.255.255.0"
+
+// Both server and client on the same subnet, no gateway needed
+#define GATEWAY			"255.255.255.255" // IP address none
 
 #endif //WIFI_H

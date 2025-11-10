@@ -1,16 +1,4 @@
 /*
- * Copyright © Gerhard Schiller 2024, <gerhard.schiller@pm.me>
- *
- * SPDX-License-Identifier: BSD-3-Clause
- *
- * This file has been adapted from the libmodbus-file "bandwidth-client.c"
- * to test a modbus server running on a RP2040.
- *
- * Use tests/pico-bandwidth-server as the server to test this client.
- *
- * The original copyright notice is below.
- */
-/*
  * Copyright © Stéphane Raimbault <stephane.raimbault@gmail.com>
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -58,76 +46,63 @@ int main(int argc, char *argv[])
     uint32_t start;
     uint32_t end;
     uint32_t bytes;
-#ifndef PICO_W_TESTS
     uint32_t rate;
-#else
-    float rate;
-#endif
     int rc;
     int n_loop;
     int use_backend;
-#ifdef PICO_W_TESTS
     char *ip_or_device;
-#endif
 
     if (argc > 1) {
         if (strcmp(argv[1], "tcp") == 0) {
             use_backend = TCP;
-#ifndef PICO_W_TESTS
-            n_loop = 100000;
-#else
-            if (argc > 2) {
-                ip_or_device = argv[2];
-            } else {
-                ip_or_device = "127.0.0.1";
-            }
-            n_loop = 10;
-#endif
+            n_loop = 1000;
         } else if (strcmp(argv[1], "rtu") == 0) {
             use_backend = RTU;
             n_loop = 100;
         } else {
-#ifndef PICO_W_TESTS
-            printf("Usage:\n  %s [tcp|rtu] - Modbus client to measure data bandwidth\n\n",
-                   argv[0]);
-#else
-            printf("Usage:\n  %s [tcp IP|rtu]\n", argv[0]);
-            printf("  Eg. %s tcp 10.0.0.1\n", argv[0]);
-            printf("  or %s rtu\n", argv[0]);
-#endif
+            printf("Modbus client for unit testing\n");
+            printf("Usage:\n  %s [tcp|tcppi|rtu]\n", argv[0]);
+            printf("Eg. tcp 127.0.0.1 or rtu /dev/ttyUSB1\n\n");
             exit(1);
         }
     } else {
         /* By default */
         use_backend = TCP;
-#ifndef PICO_W_TESTS
-        n_loop = 100000;
-#else
-        ip_or_device = "127.0.0.1";
-        n_loop = 10;
-#endif
+    }
+
+    if (argc > 2) {
+        ip_or_device = argv[2];
+    } else {
+        switch (use_backend) {
+            case TCP:
+                ip_or_device = "127.0.0.1";
+                break;
+            case RTU:
+                ip_or_device = "/dev/ttyUSB1";
+                break;
+            default:
+                break;
+        }
     }
 
     if (use_backend == TCP) {
-#ifndef PICO_W_TESTS
-        ctx = modbus_new_tcp("127.0.0.1", 1502);
-#else
         ctx = modbus_new_tcp(ip_or_device, 1502);
-#endif
+        modbus_set_response_timeout(ctx, 3, 0);
+        modbus_set_byte_timeout(ctx, 3, 0);
     } else {
-        ctx = modbus_new_rtu("/dev/ttyUSB1", 115200, 'N', 8, 1);
-        modbus_set_slave(ctx, 1);
+        ctx = modbus_new_rtu(ip_or_device, 115200, 'N', 8, 1);
+    }
+    if (ctx == NULL) {
+        fprintf(stderr, "Unable to allocate libmodbus context\n");
+        return -1;
     }
 
+    modbus_set_debug(ctx, FALSE);
     if (modbus_connect(ctx) == -1) {
         fprintf(stderr, "Connection failed: %s\n", modbus_strerror(errno));
         modbus_free(ctx);
         return -1;
     }
-
-#ifdef PICO_W_TESTS
-    modbus_set_response_timeout(ctx, 1, 0);
-#endif
 
     /* Allocate and initialize the memory to store the status */
     tab_bit = (uint8_t *) malloc(MODBUS_MAX_READ_BITS * sizeof(uint8_t));
@@ -153,28 +128,15 @@ int main(int argc, char *argv[])
 
     rate = (n_loop * nb_points) * G_MSEC_PER_SEC / (end - start);
     printf("Transfer rate in points/seconds:\n");
-#ifndef PICO_W_TESTS
-    printf("* %d KiB/s\n", rate);
-#else
-    printf("* %.0f p/s\n", rate);
-#endif
+    printf("* %d points/s\n", rate);
     printf("\n");
 
     bytes = n_loop * (nb_points / 8) + ((nb_points % 8) ? 1 : 0);
-#ifndef PICO_W_TESTS
     rate = bytes / 1024 * G_MSEC_PER_SEC / (end - start);
-#else
-    rate = (float)bytes / 1024 * G_MSEC_PER_SEC / (end - start);
-#endif
     printf("Values:\n");
     printf("* %d x %d values\n", n_loop, nb_points);
     printf("* %.3f ms for %d bytes\n", elapsed, bytes);
-
-#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
-#else
-    printf("* %.2f KiB/s\n", rate);
-#endif
     printf("\n");
 
     /* TCP: Query and response header and values */
@@ -182,17 +144,9 @@ int main(int argc, char *argv[])
     printf("Values and TCP Modbus overhead:\n");
     printf("* %d x %d bytes\n", n_loop, bytes);
     bytes = n_loop * bytes;
-#ifndef PICO_W_TESTS
     rate = bytes / 1024 * G_MSEC_PER_SEC / (end - start);
-#else
-    rate = (float)bytes / 1024 * G_MSEC_PER_SEC / (end - start);
-#endif
     printf("* %.3f ms for %d bytes\n", elapsed, bytes);
-#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
-#else
-    printf("* %.2f KiB/s\n", rate);
-#endif
     printf("\n\n");
 
     printf("READ REGISTERS\n\n");
@@ -211,27 +165,15 @@ int main(int argc, char *argv[])
 
     rate = (n_loop * nb_points) * G_MSEC_PER_SEC / (end - start);
     printf("Transfer rate in points/seconds:\n");
-#ifndef PICO_W_TESTS
-    printf("* %d KiB/s\n", rate);
-#else
-    printf("* %.0f p/s\n", rate);
-#endif
+    printf("* %d registers/s\n", rate);
     printf("\n");
 
     bytes = n_loop * nb_points * sizeof(uint16_t);
-#ifndef PICO_W_TESTS
     rate = bytes / 1024 * G_MSEC_PER_SEC / (end - start);
-#else
-    rate = (float)bytes / 1024 * G_MSEC_PER_SEC / (end - start);
-#endif
     printf("Values:\n");
     printf("* %d x %d values\n", n_loop, nb_points);
     printf("* %.3f ms for %d bytes\n", elapsed, bytes);
-#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
-#else
-    printf("* %.2f KiB/s\n", rate);
-#endif
     printf("\n");
 
     /* TCP:Query and response header and values */
@@ -239,17 +181,9 @@ int main(int argc, char *argv[])
     printf("Values and TCP Modbus overhead:\n");
     printf("* %d x %d bytes\n", n_loop, bytes);
     bytes = n_loop * bytes;
-#ifndef PICO_W_TESTS
     rate = bytes / 1024 * G_MSEC_PER_SEC / (end - start);
-#else
-    rate = (float)bytes / 1024 * G_MSEC_PER_SEC / (end - start);
-#endif
     printf("* %.3f ms for %d bytes\n", elapsed, bytes);
-#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
-#else
-    printf("* %.2f KiB/s\n", rate);
-#endif
     printf("\n\n");
 
     printf("WRITE AND READ REGISTERS\n\n");
@@ -269,27 +203,15 @@ int main(int argc, char *argv[])
 
     rate = (n_loop * nb_points) * G_MSEC_PER_SEC / (end - start);
     printf("Transfer rate in points/seconds:\n");
-#ifndef PICO_W_TESTS
-    printf("* %d KiB/s\n", rate);
-#else
-    printf("* %.0f p/s\n", rate);
-#endif
+    printf("* %d registers/s\n", rate);
     printf("\n");
 
     bytes = n_loop * nb_points * sizeof(uint16_t);
-#ifndef PICO_W_TESTS
     rate = bytes / 1024 * G_MSEC_PER_SEC / (end - start);
-#else
-    rate = (float)bytes / 1024 * G_MSEC_PER_SEC / (end - start);
-#endif
     printf("Values:\n");
     printf("* %d x %d values\n", n_loop, nb_points);
     printf("* %.3f ms for %d bytes\n", elapsed, bytes);
-#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
-#else
-    printf("* %.2f KiB/s\n", rate);
-#endif
     printf("\n");
 
     /* TCP:Query and response header and values */
@@ -297,17 +219,9 @@ int main(int argc, char *argv[])
     printf("Values and TCP Modbus overhead:\n");
     printf("* %d x %d bytes\n", n_loop, bytes);
     bytes = n_loop * bytes;
-#ifndef PICO_W_TESTS
     rate = bytes / 1024 * G_MSEC_PER_SEC / (end - start);
-#else
-    rate = (float)bytes / 1024 * G_MSEC_PER_SEC / (end - start);
-#endif
     printf("* %.3f ms for %d bytes\n", elapsed, bytes);
-#ifndef PICO_W_TESTS
     printf("* %d KiB/s\n", rate);
-#else
-    printf("* %.2f KiB/s\n", rate);
-#endif
     printf("\n");
 
     /* Free the memory */

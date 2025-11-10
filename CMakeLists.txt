@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 set(PICO_BOARD pico_w)
 
 include(pico_sdk_import.cmake)
-project(test_project C CXX ASM)
+project(libmodbus C CXX ASM)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD 17)
 # initialize the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+# add_compile_definitions(PICO_TCP_DEBUG)
 
 add_subdirectory(tests)
 add_subdirectory(examples)

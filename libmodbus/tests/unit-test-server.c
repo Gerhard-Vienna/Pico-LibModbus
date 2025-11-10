@@ -30,6 +30,10 @@
 # include <sys/socket.h>
 #endif
 
+#ifdef PICO_W_TESTS
+#include <netinet/tcp.h>
+#endif
+
 /* For MinGW */
 #ifndef MSG_NOSIGNAL
 # define MSG_NOSIGNAL 0
@@ -111,7 +115,7 @@ int main(int argc, char *argv[])
 
     header_length = modbus_get_header_length(ctx);
 
-    modbus_set_debug(ctx, FALSE);
+    // modbus_set_debug(ctx, TRUE);
 
     mb_mapping = modbus_mapping_new_start_address(UT_BITS_ADDRESS,
                                                   UT_BITS_NB,
@@ -167,22 +171,21 @@ int main(int argc, char *argv[])
             break;
         }
 
-        /* Special server behavior to test client */
-        if (query[header_length] == 0x03) {
-            /* Read holding registers */
+        uint8_t function = query[header_length];
+        uint16_t address = MODBUS_GET_INT16_FROM_INT8(query, header_length + 1);
 
+        /** Special server behavior to test client **/
+        if (function == MODBUS_FC_READ_HOLDING_REGISTERS) {
             if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 3) ==
                 UT_REGISTERS_NB_SPECIAL) {
                 printf("Set an incorrect number of values\n");
                 MODBUS_SET_INT16_TO_INT8(
                     query, header_length + 3, UT_REGISTERS_NB_SPECIAL - 1);
-            } else if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) ==
-                       UT_REGISTERS_ADDRESS_SPECIAL) {
+            } else if (address == UT_REGISTERS_ADDRESS_SPECIAL) {
                 printf("Reply to this special register address by an exception\n");
                 modbus_reply_exception(ctx, query, MODBUS_EXCEPTION_SLAVE_OR_SERVER_BUSY);
                 continue;
-            } else if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) ==
-                       UT_REGISTERS_ADDRESS_INVALID_TID_OR_SLAVE) {
+            } else if (address == UT_REGISTERS_ADDRESS_INVALID_TID_OR_SLAVE) {
                 const int RAW_REQ_LENGTH = 5;
                 uint8_t raw_req[] = {(use_backend == RTU) ? INVALID_SERVER_ID : 0xFF,
                                      0x03,
@@ -193,12 +196,10 @@ int main(int argc, char *argv[])
                 printf("Reply with an invalid TID or slave\n");
                 modbus_send_raw_request(ctx, raw_req, RAW_REQ_LENGTH * sizeof(uint8_t));
                 continue;
-            } else if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) ==
-                       UT_REGISTERS_ADDRESS_SLEEP_500_MS) {
+            } else if (address == UT_REGISTERS_ADDRESS_SLEEP_500_MS) {
                 printf("Sleep 0.5 s before replying\n");
                 usleep(500000);
-            } else if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) ==
-                       UT_REGISTERS_ADDRESS_BYTE_SLEEP_5_MS) {
+            } else if (address == UT_REGISTERS_ADDRESS_BYTE_SLEEP_5_MS) {
                 /* Test low level only available in TCP mode */
                 /* Catch the reply and send reply byte a byte */
                 uint8_t req[] = "\x00\x1C\x00\x00\x00\x05\xFF\x03\x02\x00\x00";
@@ -209,17 +210,56 @@ int main(int argc, char *argv[])
                     continue;
                 }
 
+#ifdef PICO_W_TESTS
+                // Disable the aggregation of small TCP packets.
+                int flag = 1;
+                setsockopt(w_s, SOL_TCP, TCP_NODELAY, (char *)&flag, sizeof(int));
+
+                /* Copy TID */
+                // The client runs in an endless loop.
+                // Therefore the tid will go beyond 0X00FF.
+                // We have to copy both bytes to the response!
+                req[0] = query[0];
+#endif
                 /* Copy TID */
                 req[1] = query[1];
                 for (i = 0; i < req_length; i++) {
                     printf("(%.2X)", req[i]);
+#ifdef PICO_W_TESTS
+                    // The 5 ms pause is not sufficient to wait for thee ACK.
+                    // Round-trip time pc->pico-pc with single byte packets
+                    // can be up to  15 ms.
+                    usleep(30 * 1000);
+#else
                     usleep(5000);
+#endif
                     rc = send(w_s, (const char *) (req + i), 1, MSG_NOSIGNAL);
                     if (rc == -1) {
                         break;
                     }
                 }
+#ifdef PICO_W_TESTS
+                flag = 0;
+                setsockopt(w_s, SOL_TCP, TCP_NODELAY, (char *)&flag, sizeof(int));
+#endif
                 continue;
+            }
+        } else if (function == MODBUS_FC_WRITE_SINGLE_COIL) {
+            if (address == UT_BITS_ADDRESS_INVALID_REQUEST_LENGTH) {
+                // The valid length is lengths of header + checkum + FC + address + value
+                // (max 12)
+                rc = 34;
+                printf(
+                    "Special modbus_write_bit detected. Inject a wrong length value (%d) "
+                    "in modbus_reply\n",
+                    rc);
+            }
+        } else if (function == MODBUS_FC_WRITE_SINGLE_REGISTER) {
+            if (address == UT_REGISTERS_ADDRESS_SPECIAL) {
+                rc = 45;
+                printf("Special modbus_write_register detected. Inject a wrong length "
+                       "value (%d) in modbus_reply\n",
+                       rc);
             }
         }
 

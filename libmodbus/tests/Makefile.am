@@ -9,6 +9,7 @@ noinst_PROGRAMS = \
 	unit-test-server \
 	unit-test-client \
 	test-client-cli \
+	hello-server \
 	version
 
 common_ldflags = \
@@ -38,6 +39,9 @@ unit_test_client_LDADD = $(common_ldflags)
 test_client_cli_SOURCES = test-client-cli.c
 test_client_cli_LDADD = $(common_ldflags)
 
+hello_server_SOURCES = hello-server.c
+hello_server_LDADD = $(common_ldflags)
+
 version_SOURCES = version.c
 version_LDADD = $(common_ldflags)
 
@@ -49,7 +53,7 @@ AM_CPPFLAGS = \
     -I${top_builddir}/src \
     -DPICO_W_TESTS
 
-AM_CFLAGS = ${my_CFLAGS}
+AM_CFLAGS = ${WARNING_CFLAGS}
 
 CLEANFILES = *~ *.log
 

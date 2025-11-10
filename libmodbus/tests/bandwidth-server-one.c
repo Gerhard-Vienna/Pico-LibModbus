@@ -1,5 +1,5 @@
 /*
- * Copyright © Gerhard Schiller 2024, <gerhard.schiller@pm.me>
+ * Copyright © Gerhard Schiller 2024- 2025, <gerhard.schiller@pm.me>
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -9,8 +9,7 @@
  * Use tests/pico-bandwidth-client as the client to query this server.
  *
  * The original copyright notice is below.
- */
-/*
+ *//*
  * Copyright © Stéphane Raimbault <stephane.raimbault@gmail.com>
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -63,12 +62,12 @@ int main(int argc, char *argv[])
 #ifndef PICO_W_TESTS
         ctx = modbus_new_tcp("127.0.0.1", 1502);
 #else
-       // this directs modbus_tcp_listen() to listen on INADDR_ANY
+        // this directs modbus_tcp_listen() to listen on INADDR_ANY
         ctx = modbus_new_tcp("0.0.0.0", 1502);
-        modbus_set_response_timeout(ctx, 1, 0);
 #endif
         s = modbus_tcp_listen(ctx, 1);
         modbus_tcp_accept(ctx, &s);
+        printf("A client connected\n");
 
     } else {
         ctx = modbus_new_rtu("/dev/ttyUSB0", 115200, 'N', 8, 1);
@@ -85,6 +84,9 @@ int main(int argc, char *argv[])
     }
 
     for (;;) {
+        // TODO This loop needs a timeout!
+        // Otherwise, it will hang forever if the
+        // client disconnects...
         uint8_t query[MODBUS_TCP_MAX_ADU_LENGTH];
 
         rc = modbus_receive(ctx, query);

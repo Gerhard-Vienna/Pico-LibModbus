@@ -40,12 +40,12 @@
   *
   *   Connections on Raspberry Pi Pico board, other boards may vary.
   *
-  *   GPIO PICO_DEFAULT_I2C_SDA_PIN (on Pico this is GP4 (pin 6)) -> SDA on BMP280
+  *   GPIO PICO_DEFAULT_I2C_SDA_PIN (on Pico this is GP4 (pin 6)) -> SDA on BME280
   *   board
   *   GPIO PICO_DEFAULT_I2C_SCK_PIN (on Pico this is GP5 (pin 7)) -> SCL on
-  *   BMP280 board
-  *   3.3v (pin 36) -> VCC on BMP280 board
-  *   GND (pin 38)  -> GND on BMP280 board
+  *   BME280 board
+  *   3.3v (pin 36) -> VCC on BME280 board
+  *   GND (pin 38)  -> GND on BME280 board
   *
   *   This code uses a bunch of register definitions, and some compensation code derived
   *   from the Bosch datasheet which can be found here.
@@ -69,7 +69,7 @@ int16_t     dig_H2, dig_H4, dig_H5;
 void initializeBme280(void)
 {
 #if !defined(i2c_default) || !defined(PICO_DEFAULT_I2C_SDA_PIN) || !defined(PICO_DEFAULT_I2C_SCL_PIN)
-    #warning i2c / bme280_i2c example requires a board with I2C pins
+    #warning i2c / bme280_i2c requires a board with I2C pins
     puts("Default I2C pins were not defined");
 #else
     // I2C is "open drain", pull ups to keep signal high when no data is being sent
@@ -82,7 +82,18 @@ void initializeBme280(void)
     // See if I2C is working - interrograte the device for its I2C ID number, should be 0x60
     uint8_t id;
     read_registers(0xD0, &id, 1);
-    printf("BME280 Chip-ID is 0x%x\n\n", id);
+    if(id == 0x58){
+        printf("Chip-ID is 0x%x: BMP280\n", id);
+        printf("Temperature and preassure measurment\n\n");
+    }
+    else  if(id == 0x60){
+        printf("Chip-ID is 0x%x: BME280\n", id);
+        printf("Temperature, humidity and preassure measurment\n\n");
+    }
+    else{
+        printf("Chip-ID is 0x%x: No or unkown chip!\n\n", id);
+        return;
+    }
 
     read_compensation_parameters();
 

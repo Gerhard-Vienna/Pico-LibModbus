@@ -1,5 +1,5 @@
 /*
- * Copyright © Gerhard Schiller 2024, <gerhard.schiller@pm.me>
+ * Copyright © Gerhard Schiller 2024 -2025, <gerhard.schiller@pm.me>
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -29,7 +29,6 @@
 #define BUFFSIZE      128
 
 void showCodes(void);
-
 
 void showCodes(void)
 {
@@ -97,10 +96,13 @@ int main(int argc, char *argv[])
     memset(tab_wr_registers, 0, sizeof(tab_wr_registers));
     memset(tab_rd_registers, 0, sizeof(tab_rd_registers));
 
+
     showCodes();
     for(;;){
         printf("\nModbus Code (? for help): ");
         if(fgets(input, BUFFSIZE , stdin) == NULL){
+            modbus_close(ctx);
+            modbus_free(ctx);
             printf("\nQuit\n");
             exit(0);
         }
@@ -209,14 +211,6 @@ int main(int argc, char *argv[])
                         tab_wr_registers[nb++] = atoi(ptr);
                     ptr = strtok(NULL, delimiter);
                 }
-//                 for(i = 0; i < MAX_QUANTITY; i++){
-//                     if(code == MODBUS_FC_WRITE_SINGLE_COIL
-//                         || code == MODBUS_FC_WRITE_MULTIPLE_COILS)
-//                         printf("%d ",tab_wr_bits[i]);
-//                     else
-//                         printf("%u ",tab_wr_registers[i]);
-//                 }
-//                 printf("\n");
                 break;
         }
 

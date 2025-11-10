@@ -1,12 +1,12 @@
 /*
- * Copyright © Gerhard Schiller 2024, <gerhard.schiller@pm.me>
+ * Copyright © Gerhard Schiller 2024 - 2025, <gerhard.schiller@pm.me>
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * This file has been adapted from the libmodbus-file "bandwidth-server-one.c"
- * to test a modbus server running on a RP2040.
+ * This file has been adapted from the libmodbus-file "unit-test-server.c"
+ * to run an a RP2040.
  *
- * Use libmodbus/tests/bandwidth-client as the client to query this server.
+ * Use libmodbus/tests/unit-test-client as the client to query this server.
  *
  * The original copyright notice is below.
  */
@@ -20,18 +20,68 @@
 #include "pico/cyw43_arch.h"
 #include "pico/multicore.h"
 
-// #include "lwip/pbuf.h"
-// #include "lwip/tcp.h"
-
 #include "wifi.h"
 #include "modbus.h"
+#include "unit-test.h"
 
-modbus_t *ctx = NULL;
-modbus_mapping_t *mb_mapping = NULL;
+// Wi-Fi initialization
+void init_wifi() {
+    // Connect to Wi-Fi
+    printf("Connecting to WiFi... ");
+    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
+        printf("\b\b\b\b, FAILED TO CONNECT.\n");
+        return;
+    } else {
+        printf("\b\b\b\b, connected.\n");
+    }
+}
+
+// Initialize network with static IP configuration
+void init_network() {
+    ip4_addr_t ip, gw, mask;
+
+    ip4addr_aton(SERVER_PICO_IP, &ip);
+    ip4addr_aton(NETMASK, &mask);
+    ip4addr_aton(GATEWAY, &gw);
+
+    if (cyw43_arch_init()) {
+        printf("Network failed to initialise\n");
+        return;
+    }
+    cyw43_arch_enable_sta_mode();
+
+    netif_set_addr(netif_default, &(ip), &(mask), &(gw));
+    netif_set_up(netif_default);
+    printf("Using static IP, set:\n");
+    printf("\tIP Address: %s\n",
+           ip4addr_ntoa(netif_ip4_addr(netif_default)));
+    printf("\tNet mask: %s\n",
+           ip4addr_ntoa(netif_ip4_netmask(netif_default)));
+    printf("\tDefault gateway: %s\n",
+           ip4addr_ntoa(netif_ip4_gw(netif_default)));
+}
 
 void runMbServer(void)
 {
+    modbus_t *ctx = NULL;
+    modbus_mapping_t *mb_mapping = NULL;
+    uint8_t *query;
     int rc;
+    int clientID;
+
+    // Start the TCP server
+    ctx = tcp_server_init(1502);
+
+    if (ctx == NULL) {
+        fprintf(stderr, "Unable to allocate libmodbus context\n");
+        return;
+    }
+
+    query = malloc(MODBUS_TCP_MAX_ADU_LENGTH);
+
+    modbus_set_debug(ctx, FALSE);
+    modbus_set_response_timeout(ctx, 3, 0);
+    modbus_set_byte_timeout(ctx, 3, 0);
 
     mb_mapping =
         modbus_mapping_new(MODBUS_MAX_READ_BITS, 0, MODBUS_MAX_READ_REGISTERS, 0);
@@ -41,71 +91,57 @@ void runMbServer(void)
         return;
     }
 
-    // The IP is meaningless as we have just one network interface for listening
-    ctx = modbus_new_tcp("127.0.0.1", 1502);
-    if (ctx == NULL) {
-        fprintf(stderr, "Unable to allocate libmodbus context\n");
-        return;
-    }
-    modbus_set_debug(ctx, false);
+    while(1){
+        for (clientID = 0; clientID < MAX_PEERS; clientID++) {
+            if(!modbus_is_connected(clientID)){
+                // Either no connection with this ID or the
+                // connection is down...
+                continue;
+            }
 
-    rc = modbus_tcp_listen(ctx, 2);
-    if(rc == -1){
-        fprintf(stderr, "Listen failed: %s\n", modbus_strerror(errno));
-        modbus_free(ctx);
-        return;
-    }
+            // This order of calls is essential. Modbus_set_socket()
+            // must be called before any othe routines that use ctx.
+            modbus_set_connectionID(ctx, clientID);
 
-    uint8_t query[MODBUS_TCP_MAX_ADU_LENGTH];
+            rc = modbus_client_status(clientID);
+            if(rc == 0){
+                // No request in  queue
+                continue;
+            }
 
-    modbus_tcp_accept(ctx, NULL);
-    for (;;) {
-        rc = modbus_receive(ctx, query);
-        if (rc > 0) {
-            modbus_reply(ctx, query, rc, mb_mapping);
-        } else if (rc == -1 || !modbus_tcp_is_connected(ctx)) {
-            modbus_tcp_accept(ctx, NULL);
+            // If we have reached this point (rc > 0), it means the client has
+            // sent a request, with rc being the number of bytes in the request.
+            // Termination of the connection by the client (rc < 0) is handled by
+            // modbus_receive().
+
+            printf("Client %d sent a request (%d bytes)\n",
+                   modbus_get_connectionID(ctx), rc);
+
+            // Get the request
+            if((rc = modbus_receive(ctx, query)) < 0){
+                printf("Client %d Error: %s\n",
+                       clientID, strerror(errno));
+                continue;
+            }
+
+            /* rc is the query size */
+            rc = modbus_reply(ctx, query, rc, mb_mapping);
         }
     }
-
-    // NOT REACHED (just to show what to do if your server quits...
-    printf("Quit the loop: %s\n", modbus_strerror(errno));
-    modbus_mapping_free(mb_mapping);
-    modbus_close(ctx);
-    modbus_free(ctx);
 }
 
-void main(void)
+int main()
 {
-    modbus_message_t *mb_msg;
-
     stdio_init_all();
+    printf("pico-bandwith-server\n\n");
 
-    if (cyw43_arch_init()) {
-        printf("failed to initialise\n");
-        return;
-    }
+    // Initialize the network with a static IP
+    init_network();
 
-    printf("pico-bandwidth-server\n\n");
-
-    cyw43_arch_enable_sta_mode();
-
-    printf("Connecting to WiFi...\n");
-    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("failed to connect.\n");
-        return;
-    } else {
-        printf("Connected.\n");
-    }
-    printf("IP Address: %s\n",
-           ip4addr_ntoa(netif_ip4_addr(netif_list)));
+    // Initialize Wi-Fi
+    init_wifi();
 
     multicore_launch_core1(runMbServer);
-
     for(;;){
-        sleep_ms(1);
     }
-
-    cyw43_arch_deinit();
-    return;
 }

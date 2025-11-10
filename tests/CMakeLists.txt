@@ -23,7 +23,7 @@ pico_enable_stdio_usb(pico-random-test-client 1)
 pico_enable_stdio_uart(pico-random-test-client 1)
 
 add_executable(pico-random-test-server
-pico-random-test-server
+    pico-random-test-server.c
     ../libmodbus/src/modbus.c
     ../libmodbus/src/modbus-data.c
     ../libmodbus/src/modbus-pico-tcp.c
@@ -47,7 +47,7 @@ pico_enable_stdio_usb(pico-random-test-server 1)
 pico_enable_stdio_uart(pico-random-test-server 1)
 
 add_executable(pico-unit-test-server
-    pico-unit-test-server
+    pico-unit-test-server.c
     ../libmodbus/src/modbus.c
     ../libmodbus/src/modbus-data.c
     ../libmodbus/src/modbus-pico-tcp.c
@@ -71,7 +71,7 @@ pico_enable_stdio_usb(pico-unit-test-server 1)
 pico_enable_stdio_uart(pico-unit-test-server 1)
 
 add_executable(pico-unit-test-client
-    pico-unit-test-client
+    pico-unit-test-client.c
     ../libmodbus/src/modbus.c
     ../libmodbus/src/modbus-data.c
     ../libmodbus/src/modbus-pico-tcp.c
@@ -95,7 +95,7 @@ pico_enable_stdio_usb(pico-unit-test-client 1)
 pico_enable_stdio_uart(pico-unit-test-client 1)
 
 add_executable(pico-bandwidth-server
-    pico-bandwidth-server
+    pico-bandwidth-server.c
     ../libmodbus/src/modbus.c
     ../libmodbus/src/modbus-data.c
     ../libmodbus/src/modbus-pico-tcp.c
@@ -119,8 +119,9 @@ pico_enable_stdio_usb(pico-bandwidth-server 1)
 pico_enable_stdio_uart(pico-bandwidth-server 1)
 
 
+
 add_executable(pico-bandwidth-client
-    pico-bandwidth-client
+    pico-bandwidth-client.c
     ../libmodbus/src/modbus.c
     ../libmodbus/src/modbus-data.c
     ../libmodbus/src/modbus-pico-tcp.c
