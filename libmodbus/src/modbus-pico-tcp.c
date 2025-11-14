@@ -218,7 +218,7 @@ static ssize_t _modbus_tcp_recv(modbus_t *ctx, uint8_t *rsp, int rsp_length)
     tcp_connection *peer = peers[ctx->s];
     if(peer == NULL){
         if(*_debug)
-            printf("Instance %d, _modbus_tcp_recv(), peer is NULL %d\n", ctx->s);
+            printf("Instance %d, _modbus_tcp_recv(), peer is NULL\n", ctx->s);
         errno = EBADF;
         return -1;
     }
@@ -231,7 +231,7 @@ static ssize_t _modbus_tcp_recv(modbus_t *ctx, uint8_t *rsp, int rsp_length)
 
     if(peer->error != ERR_OK){
         if(*_debug)
-            printf("Instance %d, _modbus_tcp_recv(), Error %d\n",
+            printf("Instance %d, _modbus_tcp_recv(), Error %s\n",
                peer->instance, err_txt(peer->error));
         if(peer->error == ERR_RST){
             errno = ECONNRESET;
@@ -472,7 +472,7 @@ _modbus_tcp_select(modbus_t *ctx, fd_set *rset, struct timeval *tv, int length_t
     // Internal test only, should never happen
     if(ctx == NULL){
         if(*_debug)
-            printf("Instance %d, _modbus_tcp_select(), ctx is NULL\n");
+            printf("_modbus_tcp_select(), ctx is NULL\n");
         errno = EBADF;
         return -1;
     }
@@ -481,7 +481,7 @@ _modbus_tcp_select(modbus_t *ctx, fd_set *rset, struct timeval *tv, int length_t
     // Internal test only, should never happen
     if(peer == NULL){
         if(*_debug)
-            printf("Instance %d, _modbus_tcp_select(), peer is NULL %d\n", ctx->s);
+            printf("Instance %d, _modbus_tcp_select(), peer is NULL\n", ctx->s);
         errno = EBADF;
         return -1;
     }
@@ -875,9 +875,6 @@ modbus_t *tcp_client_init(void)
 // CLIENT:
 // Initialize the TCP client
 int tcp_new_client(char *server_ip, int port) {
-    struct tcp_pcb *pcb;
-    err_t err;
-
     for (int i = 0; i < MAX_PEERS; i++) {
         if(peers[i] == NULL){
 
