@@ -44,7 +44,7 @@ typedef struct _tcp_connection {
     bool                connected;
     int					error;	// LWIP-errors: ERR_*
     // Last activity time (to track timeout for idle clients)
-    uint32_t 			last_activity; // time in msec!
+    uint64_t 			last_activity; // time in msec!
 } tcp_connection;
 
 
@@ -94,7 +94,11 @@ static int _tcp_client_connect(int serverID);
 int _send(int ctx_s, void *buf, size_t len);
 
 // SERVER AND CLIENT -> aka "peer"
+void _cleanup_connection(int peerID, char *context);
 static err_t _free_connection(tcp_connection *peer);
+
+void _show_timeout(int id, struct timeval *ptv, int remaining_ms, char *context);
+void _show_peers(void);
 
 /*************************************************************
  * Functions from the backend, wich are used in modbus_pico_tcp.c

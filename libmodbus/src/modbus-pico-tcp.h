@@ -23,7 +23,8 @@
 // The maximum number of clients that can connect to a server
 #define MAX_PEERS   4
 // Timeout for an idle client in seconds.
-#define CLIENT_TIMEOUT 			(10 * 60) // 10 mins
+// #define CLIENT_TIMEOUT 			(10 * 60) // 10 mins
+#define CLIENT_TIMEOUT 			(60) // 1 min
 
 #define MODBUS_TCP_DEFAULT_PORT 502
 #define MODBUS_TCP_SLAVE        0xFF

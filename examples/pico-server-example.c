@@ -222,6 +222,12 @@ void init_MbServer(void)
         printf("Unable to allocate libmodbus context\n");
         return;
     }
+
+#if PICO_TCP_DEBUG
+    setDebugOutput(TRUE);
+#else
+    setDebugOutput(FALSE);
+#endif
 }
 
 // This is the task that runs on Core 1.
@@ -251,8 +257,8 @@ void runMbServer(void)
             modbus_set_connectionID(ctx, clientID);
             // Get the clients status
             rc = modbus_client_status(clientID);
-            if(rc == 0){
-                // No request in  queue
+            if(rc <= 0){
+                // == 0: not request pending, < 0: ERROR
                 continue;
             }
 
@@ -315,7 +321,6 @@ void main(void)
     // Run the ModBus-Server
     multicore_launch_core1(runMbServer);
 
-    setDebugOutput(true);
     int cnt = 0;
     for(;;){
         // Check wether a client has modified any data in one of the

@@ -156,8 +156,8 @@ void runMbServer(void)
 
             // Get the clients status
             rc = modbus_client_status(clientID);
-            if(rc == 0){
-                // No request in  queue
+            if(rc <= 0){
+                // == 0: not request pending, < 0: ERROR
                 continue;
             }
 

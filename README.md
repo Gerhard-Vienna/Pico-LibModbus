@@ -47,15 +47,17 @@ libmodbus/src/modbus-pico-tcp.h
 libmodbus/src/modbus-pico-tcp-private.h 
 ```
 Copy `wifi.h.example` as `wifi.h` to your project directory and enter SSID and password. Modify the IP and LAN-settings as required by your project.  
-Do not forget to create your `lwipopts.h` file or copy `lwipopts_mbus_common.h` as `lwipopts.h` to your project directory.
+Do not forget to create your `lwipopts.h` file or copy `lwipopts_mbus_common.h` as `lwipopts.h` to your project directory.  
+Make sure`MEMP_NUM_TCP_PCB` in `lwipopts.h` is set at least to `MAX_PEERS + 1`!
 
 Use `examples/CMakeLists.txt` as guideline for your `CMakeLists.txt`.
 Make sure you add your project directory to the `target_include_directories`  directive so that `lwipopts.h` will be found. Also add `PICO_W` to the `target_compile_definitions`.
 
 **Configure Pico-LibModbus**  
-The maximum number of clients that can connect to a server is defined by the constant “MAX_PEERS” in the file `modbus-pico-tcp.h`. The default value is 4.  
+The maximum number of clients that can connect to a server is defined by the constant `MAX_PEERS` in the file `modbus-pico-tcp.h`. The default value is 4.  
+Make sure that `MEMP_NUM_TCP_PCB` in `lwipopts.h` is set at least to `MAX_PEERS + 1`!
 
-The time period after which a server will disconnect from an idle client is defined by the constant “CLIENT_TIMEOUT” in the `LibModbus modbus-pico-tcp.h` file. The default value is 10 minutes.  
+The time period after which a server will disconnect from an idle client is defined by the constant 'CLIENT_TIMEOUT' in the `LibModbus modbus-pico-tcp.h` file. The default value is 10 minutes.  
 Note that this value must be given in seconds.
 
 **Naming of the ModBus-Registres in LibModbus**  
@@ -79,14 +81,14 @@ Use the Linux program `test-client-cli` from the `libmodbus/tests` subdirectory.
 Call: 
 ```
 cd libmodbus/tests
-sudo ./test-client-cli “IP address of the server” 1502
+sudo ./test-client-cli “IP address of the server” 502
 ```
 Then, use:  
 To control the LED:  
 “Modbus code”: 5 (Write Single Coil), ‘Address’: 0 and “Data”: 1 or 0 to switch on or off.  
 
 To control the debug output:  
-“Modbus code”: 5 (Write Single Coil), ‘Address’: 1and “Data”: 1 or 0 to switch on or off.  
+“Modbus code”: 5 (Write Single Coil), ‘Address’: 1 and “Data”: 1 or 0 to switch on or off.  
 
 To query the switch-on duration of the LED:   
 “Modbus code”: 4 (Read Input Registers), “Start Address”: 0 and “Quantity”: 1.
@@ -191,6 +193,11 @@ serverID = tcp_new_client(SERVER_PICO_IP, 1502);
 ```
 and comment / uncomment as required!
 
+# Debug Output
+General debug output can be enabled using the modbus_set_debug() function.  
+In-depth debugging output for the Pico-W can be enabled at compile time using the PICO_TCP_DEBUG compiler flag.  
+Tests for "situations that should never occur"  can also be enabled at compile time using the PICO_TCP_ASSERT compiler flag.  
+
 # Technical Details
 Pico-LibModbus uses lwIP in NO_SYS mode with callbacks as TCP/IP stack. (/savannah.nongnu.org/projects/lwip)
 
@@ -201,3 +208,9 @@ Modbus clients run entirely on Core0, as it makes little sense to outsource the 
 **Ports**  
 The standard Modbus port is 501. Under Linux, a port in the range 1-1023 is a privileged port. By default, privileged ports cannot be bound to non-root processes.  
 To avoid this problem, the tests use the (non-privileged) port 1501, while the examples use the standard port 501. Therefore, the client (on the workstation) requires root privileges (sudo ...).
+
+**Revision History**  
+Version 1.1.0	Nov,  2025	Initial release  
+Version 1.1.1	Nov,  2025	Bugfix in modbus-pico-tcp.c  
+Version 1.1.2	Dez,  2025	Improved reconnection after connection interruption.  
+

@@ -163,6 +163,12 @@ int main(int argc, char *argv[])
     }
 
 #ifdef PICO_W_TESTS
+    printf("PICO_W_TESTS ENABLED\n");
+#else
+    printf("PICO_W_TESTS DISABLED\n");
+#endif
+
+#ifdef PICO_W_TESTS
     modbus_set_response_timeout(ctx, 1, 0);
 #endif
 
@@ -205,7 +211,7 @@ int main(int argc, char *argv[])
     printf("2/2 modbus_read_bits: ");
     ASSERT_TRUE(rc == 1, "FAILED (nb points %d)\n", rc);
     ASSERT_TRUE(tab_rp_bits[0] == ON, "FAILED (%0X != %0X)\n", tab_rp_bits[0], ON);
-
+#ifndef SHORT_TEST
     /* End single */
 
     /* Multiple bits */
@@ -779,6 +785,7 @@ int main(int argc, char *argv[])
     if (test_server(ctx, use_backend) == -1) {
         goto close;
     }
+#endif // SHORT_TEST
 
     modbus_close(ctx);
     modbus_free(ctx);

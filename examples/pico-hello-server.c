@@ -8,6 +8,7 @@
  * Use libmodbus/tests/test-client-cli as the client to test this server.
  * See README.md for details.
  */
+#include <stdlib.h>
 
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
@@ -104,7 +105,11 @@ void init_MbServer(void)
 
 	// Start the server and create the libmodbus context.
 	ctx = tcp_server_init(502);
-	// modbus_set_debug(ctx, TRUE);
+#if PICO_TCP_DEBUG
+	modbus_set_debug(ctx, TRUE);
+#else
+	modbus_set_debug(ctx, FALSE);
+#endif
 
 	if (ctx == NULL) {
 		printf("Unable to allocate libmodbus context\n");
@@ -143,8 +148,8 @@ void runMbServer(void)
 			// Get the clients status
 			rc = modbus_client_status(clientID);
 			// if(rc == 0){
-			if(rc == 0){
-				// No request in  queue
+			if(rc <= 0){
+				// == 0: not request pending, < 0: ERROR
 				continue;
 			}
 

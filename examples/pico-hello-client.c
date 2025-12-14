@@ -70,7 +70,11 @@ void main()
 
 	// Initialize modbus
 	ctx = tcp_client_init();
+#if PICO_TCP_DEBUG
+	modbus_set_debug(ctx, TRUE);
+#else
 	modbus_set_debug(ctx, FALSE);
+#endif
 
 	// It is the client's responsibility to re-establish an interrupted
 	// connection.
@@ -87,7 +91,6 @@ void main()
 	// before any other routines that use ctx becouse it sets the
 	// ctx-context to the desired client.
 	modbus_set_connectionID(ctx, serverID);
-
 
 #define WAIT_fOR_SERVER_ONLINE
 #ifdef WAIT_fOR_SERVER_ONLINE
@@ -114,7 +117,7 @@ void main()
 			printf("ERROR modbus_write_register (%d)\n", rc);
 		}
 		else {
-			 modbus_read_input_registers(ctx, 0, 1, &val_out);
+			 rc = modbus_read_input_registers(ctx, 0, 1, &val_out);
 			 if (rc > 0) {
 				 printf("received %d\n", val_out);
 			 }

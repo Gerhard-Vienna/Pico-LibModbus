@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <stdlib.h>
 
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
@@ -143,7 +144,20 @@ void runMbClient(void)
 
     // Initialize modbus
     ctx = tcp_client_init();
+
+#ifdef DEBUG
+    printf("modbus_set_debug(TRUE)\n");
+    modbus_set_debug(ctx, TRUE);
+#else
+    printf("modbus_set_debug(FALSE)\n");
     modbus_set_debug(ctx, FALSE);
+#endif
+
+#ifdef PICO_TCP_DEBUG
+    printf("DEBUG_printf(...) ENABLED\n");
+#else
+    printf("DEBUG_printf(...) DISABLED\n");
+#endif
 
     // It is the client's responsibility to re-establish an interrupted
     // connection.
@@ -636,10 +650,18 @@ void runMbClient(void)
         printf("3/8 Invalid byte timeout (too large us): ");
         ASSERT_TRUE(rc == -1 && errno == EINVAL, "");
 
-        modbus_set_response_timeout(ctx, 0, 1);
+        /*
+         * Timeouts in the Pico-LibModbus implementation have a granularity of
+         * 1 ms. A timeout of 1 µs would therefore break the code as it would
+         * result in a of timeout 0 ms.
+         */
+        // modbus_set_response_timeout(ctx, 0, 1);
+        modbus_set_response_timeout(ctx, 0, 20000);
         rc = modbus_read_registers(
             ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, tab_rp_registers);
-        printf("4/8 1us response timeout: ");
+        // printf("4/8 1us response timeout: ");
+        printf("4/8 1ms response timeout: ");
+        printf("%d %d\n", rc, errno);       //G##
         if (rc == -1 && errno == ETIMEDOUT) {
             printf("OK\n");
         } else {
@@ -650,7 +672,7 @@ void runMbClient(void)
         * libmodbus but after a sleep of current response timeout
         * so 0 can be too short!
         */
-        sleep_ms((old_response_to_sec * 1000 + old_response_to_usec / 1000) * 2);
+        sleep_ms((old_response_to_sec * 1000 + old_response_to_usec / 1000) * 5);
         modbus_flush(ctx);
 
         /* Trigger a special behaviour on server to wait for 0.5 second before
@@ -998,6 +1020,7 @@ void main()
 
     // Initialize Wi-Fi
     init_wifi();
+
 
     runMbClient();
     for(;;){

@@ -15,6 +15,7 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
+#include <stdlib.h>
 
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
@@ -86,7 +87,8 @@ void runMbServer(void)
 
     header_length = modbus_get_header_length(ctx);
 
-    modbus_set_debug(ctx, FALSE);
+//G##    modbus_set_debug(ctx, FALSE);
+    modbus_set_debug(ctx, TRUE);
 
     mb_mapping = modbus_mapping_new_start_address(UT_BITS_ADDRESS,
                                                   UT_BITS_NB,

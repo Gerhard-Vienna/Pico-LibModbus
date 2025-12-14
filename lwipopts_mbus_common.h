@@ -9,6 +9,7 @@
 #ifndef NO_SYS
 #define NO_SYS                      1
 #endif
+
 // allow override in some examples
 #ifndef LWIP_SOCKET
 #define LWIP_SOCKET                 0
@@ -52,12 +53,55 @@
 #define DHCP_DOES_ARP_CHECK         0
 #define LWIP_DHCP_DOES_ACD_CHECK    0
 
-#ifndef NDEBUG
+// to enable LWIP-debugging uncomment the next line!
 #define LWIP_DEBUG                  1
+
+#ifdef LWIP_DEBUG
+/* ---------------------------------------------------------
+ *   ENABLE DEBUGGING
+ * --------------------------------------------------------- */
+// #define LWIP_DBG_MIN_LEVEL          LWIP_DBG_LEVEL_ALL
+#define LWIP_DBG_MIN_LEVEL          LWIP_DBG_LEVEL_WARNING
 #define LWIP_STATS                  1
 #define LWIP_STATS_DISPLAY          1
-#endif
+#define LWIP_DEBUG_TIMESTAMPS       1
 
+/* Core debugging */
+#define IP_DEBUG                    LWIP_DBG_ON
+#define NETIF_DEBUG                 LWIP_DBG_ON
+#define DHCP_DEBUG                  LWIP_DBG_ON
+#define ETHARP_DEBUG                LWIP_DBG_ON
+#define DNS_DEBUG                   LWIP_DBG_ON
+
+/* TCP debugging */
+#define TCP_DEBUG                   LWIP_DBG_ON
+#define TCP_INPUT_DEBUG             LWIP_DBG_ON
+#define TCP_OUTPUT_DEBUG            LWIP_DBG_ON
+#define TCP_STATE_DEBUG             LWIP_DBG_ON
+#define TCP_QLEN_DEBUG              LWIP_DBG_ON
+#define TCP_RST_DEBUG               LWIP_DBG_ON
+
+/* Memory debugging */
+#define MEM_DEBUG                   LWIP_DBG_ON
+#define MEMP_DEBUG                  LWIP_DBG_ON
+#define PBUF_DEBUG                  LWIP_DBG_ON
+
+/* RAW API debugging */
+#define RAW_DEBUG                   LWIP_DBG_ON
+
+/* Printf backend for lwIP */
+#include <stdio.h>
+#define LWIP_PLATFORM_DIAG(x)       do { printf x; } while(0)
+// #define LWIP_PLATFORM_ASSERT(x)     do { printf("ASSERT: %s\n", x); }
+#define LWIP_PLATFORM_ASSERT(x) do { \
+panic("MY ASSERT FAILED: %s\n", x); \
+} while (0)
+
+#else // LWIP_DEBUG
+/* ---------------------------------------------------------
+ *   DISABLE DEBUGGING
+ * --------------------------------------------------------- */
+#define LWIP_STATS                  0
 #define ETHARP_DEBUG                LWIP_DBG_OFF
 #define NETIF_DEBUG                 LWIP_DBG_OFF
 #define PBUF_DEBUG                  LWIP_DBG_OFF
@@ -86,5 +130,7 @@
 #define PPP_DEBUG                   LWIP_DBG_OFF
 #define SLIP_DEBUG                  LWIP_DBG_OFF
 #define DHCP_DEBUG                  LWIP_DBG_OFF
+
+#endif // LWIP_DEBUG
 
 #endif /* __LWIPOPTS_H__ */

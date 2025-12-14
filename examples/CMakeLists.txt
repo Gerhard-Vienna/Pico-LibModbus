@@ -5,7 +5,10 @@ add_executable(pico-hello-server
     ../libmodbus/src/modbus-pico-tcp.c
 )
 target_compile_definitions(pico-hello-server PRIVATE
-    PICO_W  # for libmodbus
+    PICO_W              # for libmodbus
+    DEBUG               # to enable debuging output in the application
+    # PICO_TCP_DEBUG      # to enable debuging output in modbus-pico-tcp.c
+    PICO_TCP_ASSERT     # to enable internal tests in modbus-pico-tcp.c
 )
 target_include_directories(pico-hello-server PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
@@ -29,7 +32,10 @@ add_executable(pico-hello-client
     ../libmodbus/src/modbus-pico-tcp.c
 )
 target_compile_definitions(pico-hello-client PRIVATE
-    PICO_W  # for libmodbus
+    PICO_W              # for libmodbus
+    DEBUG               # to enable debuging output in the application
+    # PICO_TCP_DEBUG      # to enable debuging output in modbus-pico-tcp.c
+    PICO_TCP_ASSERT     # to enable internal tests in modbus-pico-tcp.c
 )
 target_include_directories(pico-hello-client PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
@@ -53,7 +59,10 @@ add_executable(pico-server-example
         ../libmodbus/src/modbus-pico-tcp.c
 )
 target_compile_definitions(pico-server-example PRIVATE
-        PICO_W  # for libmodbus
+    PICO_W              # for libmodbus
+    DEBUG               # to enable debuging output in the application
+    # PICO_TCP_DEBUG      # to enable debuging output in modbus-pico-tcp.c
+    PICO_TCP_ASSERT     # to enable internal tests in modbus-pico-tcp.c
 )
 target_include_directories(pico-server-example PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
@@ -82,7 +91,10 @@ add_executable(pico-weather-server
     ../libmodbus/src/modbus-pico-tcp.c
 )
 target_compile_definitions(pico-weather-server PRIVATE
-    PICO_W  # for libmodbus
+    PICO_W              # for libmodbus
+    DEBUG               # to enable debuging output in the application
+    # PICO_TCP_DEBUG      # to enable debuging output in modbus-pico-tcp.c
+    PICO_TCP_ASSERT     # to enable internal tests in modbus-pico-tcp.c
 )
 target_include_directories(pico-weather-server PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}

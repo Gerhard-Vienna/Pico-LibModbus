@@ -110,7 +110,7 @@ const char *modbus_strerror(int errnum)
 void _error_print(modbus_t *ctx, const char *context)
 {
     if (ctx->debug) {
-        fprintf(stderr, "ERROR %s", modbus_strerror(errno));
+        fprintf(stderr, "MODBUS-ERROR %s", modbus_strerror(errno));
         if (context != NULL) {
             fprintf(stderr, ": %s\n", context);
         } else {
@@ -215,7 +215,7 @@ static int send_msg(modbus_t *ctx, uint8_t *msg, int msg_length)
     do {
         rc = ctx->backend->send(ctx, msg, msg_length);
         if (rc == -1) {
-            _error_print(ctx, NULL);
+            _error_print(ctx, "send_msg");
             if (ctx->error_recovery & MODBUS_ERROR_RECOVERY_LINK) {
 #ifdef _WIN32
                 const int wsa_err = WSAGetLastError();
@@ -622,11 +622,11 @@ static int check_confirmation(modbus_t *ctx, uint8_t *req, uint8_t *rsp, int rsp
             } else {
                 errno = EMBBADEXC;
             }
-            _error_print(ctx, NULL);
+            _error_print(ctx, "check_confirmation");
         return -1;
         } else {
             errno = EMBBADEXC;
-            _error_print(ctx, NULL);
+            _error_print(ctx, "check_confirmation");
             return -1;
         }
     }
@@ -1885,9 +1885,18 @@ int modbus_get_response_timeout(modbus_t *ctx, uint32_t *to_sec, uint32_t *to_us
     return 0;
 }
 
+/*
+ * Timeouts in the Pico-LibModbus implementation have a granularity of
+ * 1 ms. A timeout of 1 µs would therefore break the code, as it would
+ * result in a of timeout 0 ms.
+ */
 int modbus_set_response_timeout(modbus_t *ctx, uint32_t to_sec, uint32_t to_usec)
 {
+#if !defined PICO_W
     if (ctx == NULL || (to_sec == 0 && to_usec == 0) || to_usec > 999999) {
+#else
+    if (ctx == NULL || (to_sec == 0 && to_usec < 1000) || to_usec > 999999) {
+#endif
         errno = EINVAL;
         return -1;
     }
@@ -1910,11 +1919,20 @@ int modbus_get_byte_timeout(modbus_t *ctx, uint32_t *to_sec, uint32_t *to_usec)
     return 0;
 }
 
+/*
+ * Timeouts in the Pico-LibModbus implementation have a granularity of
+ * 1 ms. A timeout of 1 µs would therefore break the code, as it would
+ * result in a of timeout 0 ms.
+ */
 int modbus_set_byte_timeout(modbus_t *ctx, uint32_t to_sec, uint32_t to_usec)
 {
     /* Byte timeout can be disabled when both values are zero */
+#if !defined PICO_W
     if (ctx == NULL || to_usec > 999999) {
-        errno = EINVAL;
+#else
+    if (ctx == NULL || (to_usec > 0 && to_usec < 1000) || to_usec > 999999) {
+#endif
+            errno = EINVAL;
         return -1;
     }
 
