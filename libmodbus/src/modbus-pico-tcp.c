@@ -403,11 +403,11 @@ peers[ctx->s]->instance < MAX_PEERS",
     // PICO_ASSERT("peers[ctx->s]->connected == FALSE",
     //             peers[ctx->s]->connected == FALSE);
 
-    if(peers[ctx->s]->connected == TRUE){
-        printf("*******************************************\n");
-        printf("*   peers[%d]->connected == TRUE            *\n", ctx->s);
-        printf("*******************************************\n");
-    }
+    // if(peers[ctx->s]->connected == TRUE){
+    //     printf("*******************************************\n");
+    //     printf("*   peers[%d]->connected == TRUE            *\n", ctx->s);
+    //     printf("*******************************************\n");
+    // }
 
     tcp_connection *server = peers[ctx->s];
 
