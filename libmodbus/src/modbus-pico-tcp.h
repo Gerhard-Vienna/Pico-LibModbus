@@ -16,15 +16,19 @@
 #ifndef MODBUS_PICO_TCP_H
 #define MODBUS_PICO_TCP_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 #include <stdbool.h>
 
-// The maximum number of clients that can connect to a server
+// The maximum number of connections
 #define MAX_PEERS   4
+
 // Timeout for an idle client in seconds.
 #define CLIENT_TIMEOUT 			(10 * 60) // 10 mins
-// #define CLIENT_TIMEOUT 			(60) // 1 min
 
 #define MODBUS_TCP_DEFAULT_PORT 502
 #define MODBUS_TCP_SLAVE        0xFF
@@ -43,16 +47,13 @@ typedef struct _modbus_message_t {
     uint16_t    count;
 }modbus_message_t;
 
-// Array to hold active connections
-extern struct _tcp_connection *peers[];
-
 // CLIENT
 // Initialize modbus
 modbus_t *tcp_client_init();
 
 // CLIENT:
 // Initialize the TCP client
-int tcp_new_client(char *server_ip, int port);
+int tcp_new_client(const char *server_ip, int port);
 
 
 // SERVER:
@@ -100,11 +101,18 @@ void modbus_tcp_mapping_lock(modbus_t *ctx);
 void modbus_tcp_mapping_unlock(modbus_t *ctx);
 int modbus_tcp_get_error(void);
 bool modbus_get_debug(modbus_t *ctx);
+char* modbus_get_ip(int peer_id);
+int modbus_get_id(modbus_t *ctx);
 
 // This function is only used in test cases (pico-unit-test-server)
 void modbus_tcp_nodelay(modbus_t *ctx, bool enable);
 
 // debugging only
 char *err_txt();
+void _show_peers(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* MODBUS_PICO_TCP_H */

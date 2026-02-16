@@ -18,6 +18,11 @@
 #ifndef MODBUS_H
 #define MODBUS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 // clang-format off
 /* Add this for macros that defined unix flavor */
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
@@ -351,5 +356,9 @@ MODBUS_API void modbus_set_float_cdab(float f, uint16_t *dest);
 #endif
 
 MODBUS_END_DECLS
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* MODBUS_H */

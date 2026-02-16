@@ -63,9 +63,6 @@
 #include "hardware/adc.h"
 #include "hardware/rtc.h"
 
-// #include "lwip/pbuf.h"
-// #include "lwip/tcp.h"
-
 #include "wifi.h"
 #include "modbus.h"
 
@@ -88,11 +85,11 @@ modbus_mapping_t *mb_mapping;
 void read_onboard_temperature(void)
 {
     /* 12-bit conversion,
-     * I use an external 3.0 V refernce, so max value == ADC_VREF == 3.0 V
-     * if the internal reference is used,  max value == ADC_VREF == 3.3 V
+     * If the internal reference is used, max value = ADC_VREF = 3.3 V
+     * If you use an external 3.0 V refernce, max value = ADC_VREF = 3.0 V
      */
-    //     const float conversionFactor = 3.3f / (1 << 12);
-    const float conversionFactor = 3.0f / (1 << 12);
+    const float conversionFactor = 3.3f / (1 << 12);
+    // const float conversionFactor = 3.0f / (1 << 12);
 
     float adc = (float)adc_read() * conversionFactor;
     float temp = 27.0f - (adc - 0.706f) / 0.001721f;
@@ -124,7 +121,7 @@ void setRTC(void)
     };
 
     if(modbus_get_debug(ctx))
-        printf("Set RTC from holding registers 6:0 ");
+        printf("Set RTC from holding registers 0:7 ");
     if(rtc_set_datetime(&t)){
         if(modbus_get_debug(ctx))
             printf("OK\n");

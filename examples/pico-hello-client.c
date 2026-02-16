@@ -8,6 +8,7 @@
  * Use libmodbus/tests/hello-server as the server to test this client.
  * See README.md for details.
  */
+#include <stdlib.h>
 
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
@@ -70,10 +71,19 @@ void main()
 
 	// Initialize modbus
 	ctx = tcp_client_init();
-#if PICO_TCP_DEBUG
+
+#ifdef DEBUG
+	printf("modbus_set_debug(TRUE)\n");
 	modbus_set_debug(ctx, TRUE);
 #else
+	printf("modbus_set_debug(FALSE)\n");
 	modbus_set_debug(ctx, FALSE);
+#endif
+
+#ifdef PICO_TCP_DEBUG
+	printf("DEBUG_printf(...) ENABLED\n");
+#else
+	printf("DEBUG_printf(...) DISABLED\n");
 #endif
 
 	// It is the client's responsibility to re-establish an interrupted

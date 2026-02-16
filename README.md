@@ -213,4 +213,4 @@ To avoid this problem, the tests use the (non-privileged) port 1501, while the e
 Version 1.1.0	Nov,  2025	Initial release  
 Version 1.1.1	Nov,  2025	Bugfix in modbus-pico-tcp.c  
 Version 1.1.2	Dez,  2025	Improved reconnection after connection interruption.  
-
+Version 1.1.3	Feb,  2026	Reconnection after a connection interruption has been further improved.  Handling of idle clients is more robust.  

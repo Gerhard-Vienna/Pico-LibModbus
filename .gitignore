@@ -2,7 +2,7 @@ build
 Docs
 libmodbus/docs
 tests-1.0
-libmodbus-3*
+libmodbus-*
 build-aux
 wifi.h
 pico_sdk_import.cmake

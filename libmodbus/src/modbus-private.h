@@ -18,6 +18,10 @@
 #ifndef MODBUS_PRIVATE_H
 #define MODBUS_PRIVATE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef PICO_W
 // clang-format off
 #ifndef _MSC_VER
@@ -143,5 +147,9 @@ size_t strlcpy(char *dest, const char *src, size_t dest_size);
 #endif
 
 MODBUS_END_DECLS
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* MODBUS_PRIVATE_H */

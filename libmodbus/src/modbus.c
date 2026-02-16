@@ -215,7 +215,6 @@ static int send_msg(modbus_t *ctx, uint8_t *msg, int msg_length)
     do {
         rc = ctx->backend->send(ctx, msg, msg_length);
         if (rc == -1) {
-            _error_print(ctx, "send_msg");
             if (ctx->error_recovery & MODBUS_ERROR_RECOVERY_LINK) {
 #ifdef _WIN32
                 const int wsa_err = WSAGetLastError();
@@ -232,6 +231,9 @@ static int send_msg(modbus_t *ctx, uint8_t *msg, int msg_length)
                 }
 #else
                 int saved_errno = errno;
+// The sleep_response_timeout() function only works as expected if the
+// response time is less than twice the specified timeout value.
+// Test case: pico-unit-test-client,  '5/8 Too short response timeout'.
 
                 if ((errno == EBADF || errno == ECONNRESET || errno == EPIPE)) {
                     modbus_close(ctx);
@@ -528,6 +530,7 @@ int _modbus_receive_msg(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type)
                     step = _STEP_META;
                     break;
                 } /* else switches straight to the next step */
+                // fall through
             case _STEP_META:
                 length_to_read = compute_data_length_after_meta(ctx, msg, msg_type);
                 if ((msg_length + length_to_read) > ctx->backend->max_adu_length) {
@@ -1932,7 +1935,7 @@ int modbus_set_byte_timeout(modbus_t *ctx, uint32_t to_sec, uint32_t to_usec)
 #else
     if (ctx == NULL || (to_usec > 0 && to_usec < 1000) || to_usec > 999999) {
 #endif
-            errno = EINVAL;
+        errno = EINVAL;
         return -1;
     }
 

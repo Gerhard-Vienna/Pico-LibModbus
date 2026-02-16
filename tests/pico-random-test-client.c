@@ -106,14 +106,24 @@ void runMbClient(void)
 
     // Initialize modbus
     ctx = tcp_client_init();
+
+#ifdef DEBUG
+    printf("modbus_set_debug(TRUE)\n");
     modbus_set_debug(ctx, TRUE);
-    // modbus_set_response_timeout(ctx, 3, 0);
-    // modbus_set_byte_timeout(ctx, 3, 0);
+#else
+    printf("modbus_set_debug(FALSE)\n");
+    modbus_set_debug(ctx, FALSE);
+#endif
+
+#ifdef PICO_TCP_DEBUG
+    printf("DEBUG_printf(...) ENABLED\n");
+#else
+    printf("DEBUG_printf(...) DISABLED\n");
+#endif
 
     // It is the client's responsibility to re-establish an interrupted
     // connection.
     modbus_set_error_recovery(ctx, MODBUS_ERROR_RECOVERY_LINK |                                MODBUS_ERROR_RECOVERY_PROTOCOL);
-    // modbus_set_error_recovery(ctx, MODBUS_ERROR_RECOVERY_LINK);
 
 
     /* Allocate and initialize the different memory spaces */
@@ -135,8 +145,8 @@ void runMbClient(void)
     memset(tab_rw_rq_registers, 0, nb * sizeof(uint16_t));
 
     // Initialize the clients connection to the server
-    serverID = tcp_new_client(SERVER_WS_IP, 1502);
-    // serverID = tcp_new_client(SERVER_PICO_IP, 1502);
+    // serverID = tcp_new_client(SERVER_WS_IP, 1502);
+    serverID = tcp_new_client(SERVER_PICO_IP, 1502);
     modbus_set_connectionID(ctx, serverID);
 
 

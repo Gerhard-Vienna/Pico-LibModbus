@@ -71,8 +71,8 @@ static err_t sent_callback(void *arg, struct tcp_pcb *pcb, u16_t len);
 
 // SERVER
 // Callback for polling
-// check if a client has been idle for more than CLIENT_TIMEOUT msec
-static err_t disconnect_idle_clients(void *arg, struct tcp_pcb *pcb);
+// Closes a connection that has been idle for too long
+static err_t poll_callback(void *arg, __unused struct tcp_pcb *pcb);
 
 // SERVER AND CLIENT -> aka "peer"
 // Callback for error handling
@@ -94,7 +94,7 @@ static int _tcp_client_connect(int serverID);
 int _send(int ctx_s, void *buf, size_t len);
 
 // SERVER AND CLIENT -> aka "peer"
-void _cleanup_connection(int peerID, char *context);
+bool _cleanup_connection(int peerID, char *context);
 static err_t _free_connection(tcp_connection *peer);
 
 void _show_timeout(int id, struct timeval *ptv, int remaining_ms, char *context);

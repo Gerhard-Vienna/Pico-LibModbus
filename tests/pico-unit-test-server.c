@@ -178,7 +178,6 @@ void runMbServer(void)
                     continue;
                 } else if (address == UT_REGISTERS_ADDRESS_SLEEP_500_MS) {
                     printf("Sleep 0.5 s before replying\n");
-                    // usleep(500000);
                     sleep_ms(500);
                 } else if (address == UT_REGISTERS_ADDRESS_BYTE_SLEEP_5_MS) {
                     /* Test low level only available in TCP mode */

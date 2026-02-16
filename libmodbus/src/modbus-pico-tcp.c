@@ -54,8 +54,9 @@
     #define PICO_ASSERT(message, assertion)
 #endif /* PICO_TCP_ASSERT */
 
+// SERVER and CLIENT
 // Array to hold active connections
-tcp_connection *peers[MAX_PEERS];
+static tcp_connection *peers[MAX_PEERS];
 
 static int *_debug;
 static int *_error_recovery;
@@ -162,16 +163,16 @@ static ssize_t _modbus_tcp_send(modbus_t *ctx, const uint8_t *req, int req_lengt
     PICO_ASSERT("ctx != NULL", ctx != NULL);
     if(ctx->s < 0 && ctx->s >= MAX_PEERS){
         if(*_debug){
-            printf("Instance %d, _modbus_tcp_send() called for \
-invalid connection\n", ctx->s);
+            printf("Inst %d, _modbus_tcp_send(): invalid connection\n",
+                   ctx->s);
         }
         errno = ECONNRESET;
         return -1;
     }
     if(peers[ctx->s] == NULL){
         if(*_debug){
-            printf("Instance %d, _modbus_tcp_send() called \
-for non-existant connection\n", ctx->s);
+            printf("Inst %d, _modbus_tcp_send(): non-existant connection\n",
+                   ctx->s);
         }
         errno = ECONNRESET;
         return -1;
@@ -179,8 +180,8 @@ for non-existant connection\n", ctx->s);
 
     if(peers[ctx->s]->pcb == NULL || peers[ctx->s]->error == ERR_CLSD){
         if(*_debug){
-            printf("Instance %d, _modbus_tcp_send() called for closed \
-connection\n", ctx->s);
+            printf("Inst %d, _modbus_tcp_send(): closed connection\n",
+                   ctx->s);
         }
         errno = ECONNRESET;
         return -1;
@@ -194,17 +195,23 @@ connection\n", ctx->s);
     tcp_connection *peer = peers[ctx->s];
 
     int rc;
-    DEBUG_printf("Instance %d, _modbus_tcp_send()\n", peer->instance);
+    DEBUG_printf("Inst %d, _modbus_tcp_send()\n", peer->instance);
 
     peer->send_len = 0;
+    if(*_debug && peer->recv_len > 0){
+        printf("Inst %d, _modbus_tcp_send(), unexpected %d bytes in recv-buffer\n",
+               peer->instance,  peer->recv_len);
+    }
+    peer->recv_len = 0;
+
     cyw43_arch_lwip_begin();
     rc = tcp_write(peer->pcb, req, req_length, TCP_WRITE_FLAG_COPY);
     cyw43_arch_lwip_end();
 
     if(rc != ERR_OK){
         if(*_debug){
-            printf("Instance %d, _modbus_tcp_send(): \
-tcp_write failed\n", peer->instance);
+            printf("Inst %d, _modbus_tcp_send(): tcp_write failed, \"%s\"\n",
+                   peer->instance, err_txt(rc));
         }
         _modbus_tcp_close(ctx);
 
@@ -212,16 +219,16 @@ tcp_write failed\n", peer->instance);
         errno = ECONNRESET;
         return -1;
     }
-    DEBUG_printf("Instance %d, _modbus_tcp_send(): \
-tcp_write OK\n", peer->instance);
+    DEBUG_printf("Inst %d, _modbus_tcp_send(): tcp_write OK\n",
+                 peer->instance);
 
     cyw43_arch_lwip_begin();
     rc = tcp_output(peer->pcb);
     cyw43_arch_lwip_end();
     if(rc != ERR_OK){
         if(*_debug){
-            printf("Instance %d, _modbus_tcp_send(): \
-tcp_output failed\n", peer->instance);
+            printf("Inst %d, _modbus_tcp_send(): tcp_output failed \"%s\"\n",
+                   peer->instance, err_txt(rc));
         }
         _modbus_tcp_close(ctx);
 
@@ -229,14 +236,14 @@ tcp_output failed\n", peer->instance);
         errno = ECONNRESET;
         return -1;
     }
-    DEBUG_printf("Instance %d, _modbus_tcp_send(): tcp_output OK\n",
+    DEBUG_printf("Inst %d, _modbus_tcp_send(): tcp_output OK\n",
                  peer->instance);
 
     struct timeval *ptv;
     int timeout_ms = 0;
     ptv = &ctx->response_timeout;
 
-    DEBUG_printf("Instance %d, _modbus_tcp_send(): timeout: ",
+    DEBUG_printf("Inst %d, _modbus_tcp_send(): timeout: ",
                  peer->instance);
     if(ptv){
         timeout_ms =  ptv->tv_sec * 1000;
@@ -251,12 +258,9 @@ tcp_output failed\n", peer->instance);
         if(ptv){
             if(timeout_ms == 0){
                 if(*_debug){
-                    printf("Instance %d, _modbus_tcp_send(): \
-Timeout!\n", ctx->s);
+                    printf("Inst %d, _modbus_tcp_send(): Timeout!\n", ctx->s);
                 }
-                //TODO Introduced an error somewhere else?
-                // errno = ETIMEDOUT;
-                errno = ECONNRESET;
+                errno = ETIMEDOUT;
                 return -1;
             }
             timeout_ms -= _WAIT_LOOP_INTERVAL_MS;
@@ -268,9 +272,15 @@ Timeout!\n", ctx->s);
     }
 
     if(peer->error == ERR_OK){
+        DEBUG_printf("Inst %d, _modbus_tcp_send(): %d Bytes\n",
+                   ctx->s, peer->send_len);
         return peer->send_len;
     }
     else{
+        if(*_debug){
+            printf("Inst %d, _modbus_tcp_send() failed: \"%s\"\n",
+                   peer->instance, err_txt(peer->error));
+        }
         _modbus_tcp_close(ctx);
 
         errno = ECONNRESET;
@@ -285,23 +295,24 @@ static int _modbus_tcp_receive(modbus_t *ctx, uint8_t *req)
 
 // SERVER AND CLIENT -> aka "peer"
 // Receive data from peer, mimics the recv() system-call on linux
-// errno used: ECONNREFUSED, EBADF, ECONNRESET
+// errno used: EBADF, ECONNRESET
 static ssize_t _modbus_tcp_recv(modbus_t *ctx, uint8_t *rsp, int rsp_length)
 {
     PICO_ASSERT("ctx != NULL", ctx != NULL);
     if(ctx->s < 0 && ctx->s >= MAX_PEERS){
         if(*_debug){
-            printf("_modbus_tcp_recv() called for \
-invalid connection: %d\n", ctx->s);
+            printf("_modbus_tcp_recv(): void id: %d\n", ctx->s);
         }
         return -1;
     }
-    PICO_ASSERT("peers[ctx->s] != NULL",
-                peers[ctx->s] != NULL);
+    PICO_ASSERT("ctx->s >= 0 && ctx->s < MAX_PEERS",
+                ctx->s >= 0 && ctx->s < MAX_PEERS);
+
+    PICO_ASSERT("Waiting for a confirmation.", peers[ctx->s] != NULL);
     if(peers[ctx->s]->pcb == NULL){
         if(*_debug){
-            printf("Instance %d, _modbus_tcp_recv() called for \
-non-existant connection\n", ctx->s);
+            printf("Inst %d, _modbus_tcp_recv(): non-existant connection\n",
+                   ctx->s);
         }
         errno = ECONNRESET;
         return(-1);
@@ -310,8 +321,7 @@ non-existant connection\n", ctx->s);
                 peers[ctx->s]->connected == TRUE);
 
     tcp_connection *peer = peers[ctx->s];
-
-    DEBUG_printf("Instance %d, _modbus_tcp_recv()\n", peer->instance);
+    DEBUG_printf("Inst %d, _modbus_tcp_recv()\n", peer->instance);
 
     while(peer->recv_len == 0 && peer->error == ERR_OK){
         sleep_ms(_WAIT_LOOP_INTERVAL_MS);
@@ -319,7 +329,7 @@ non-existant connection\n", ctx->s);
 
     if(peer->error != ERR_OK){
         if(*_debug)
-            printf("Instance %d, _modbus_tcp_recv(), Error %s\n",
+            printf("Inst %d, _modbus_tcp_recv(), Error %s\n",
                peer->instance, err_txt(peer->error));
         if(peer->error == ERR_RST){
             errno = ECONNRESET;
@@ -341,7 +351,7 @@ non-existant connection\n", ctx->s);
     return cpCnt;
 }
 
-static int _modbus_tcp_check_integrity(modbus_t *ctx, uint8_t *msg, const int msg_length)
+static int _modbus_tcp_check_integrity(__unused modbus_t *ctx, __unused uint8_t *msg, const int msg_length)
 {
     return msg_length;
 }
@@ -349,14 +359,14 @@ static int _modbus_tcp_check_integrity(modbus_t *ctx, uint8_t *msg, const int ms
 static int _modbus_tcp_pre_check_confirmation(modbus_t *ctx,
                                               const uint8_t *req,
                                               const uint8_t *rsp,
-                                              int rsp_length)
+                                              __unused int rsp_length)
 {
     unsigned int protocol_id;
     /* Check transaction ID */
     if (req[0] != rsp[0] || req[1] != rsp[1]) {
         if (*_debug) {
-            printf("Instance %d, Invalid transaction ID received 0x%X \
-(not 0x%X)\n",
+            printf("Inst %d,\
+Invalid transaction ID received 0x%X (not 0x%X)\n",
                 (rsp[0] << 8) + rsp[1],
                 (req[0] << 8) + req[1],
                 ctx->s);
@@ -369,8 +379,8 @@ static int _modbus_tcp_pre_check_confirmation(modbus_t *ctx,
     protocol_id = (rsp[2] << 8) + rsp[3];
     if (protocol_id != 0x0) {
         if (*_debug) {
-            printf("Instance %d, Invalid protocol ID received 0x%X \
-(not 0x0)\n",
+            printf("Inst %d, \
+Invalid protocol ID received 0x%X (not 0x0)\n",
                 protocol_id, ctx->s);
         }
         errno = EMBBADDATA;
@@ -394,27 +404,17 @@ static int _modbus_tcp_connect(modbus_t *ctx){
     int timeout_ms = 0;
 
     PICO_ASSERT("ctx != NULL", ctx != NULL);
-    PICO_ASSERT("peers[ctx->s]->instance >= 0 && \
-peers[ctx->s]->instance < MAX_PEERS",
+    PICO_ASSERT("peers[ctx->s]->instance >= 0 && peers[ctx->s]->instance < MAX_PEERS",
                 peers[ctx->s]->instance>= 0 &&
                 peers[ctx->s]->instance < MAX_PEERS);
-    PICO_ASSERT("peers[ctx->s] != NULL",
-                peers[ctx->s] != NULL);
-    // PICO_ASSERT("peers[ctx->s]->connected == FALSE",
-    //             peers[ctx->s]->connected == FALSE);
-
-    // if(peers[ctx->s]->connected == TRUE){
-    //     printf("*******************************************\n");
-    //     printf("*   peers[%d]->connected == TRUE            *\n", ctx->s);
-    //     printf("*******************************************\n");
-    // }
+    PICO_ASSERT("peers[ctx->s] != NULL", peers[ctx->s] != NULL);
 
     tcp_connection *server = peers[ctx->s];
 
     struct timeval *ptv;
     ptv = &ctx->response_timeout;
 
-    DEBUG_printf("Instance %d, _modbus_tcp_connect() with timeout: ",
+    DEBUG_printf("Inst %d, _modbus_tcp_connect() with timeout: ",
                  ctx->s);
     if(ptv){
         timeout_ms =  ptv->tv_sec * 1000;
@@ -425,38 +425,50 @@ peers[ctx->s]->instance < MAX_PEERS",
         DEBUG_printf("none\n");
     }
 
-    server = peers[ctx->s];
     server->error = ERR_INPROGRESS;
-
     if(_tcp_client_connect(server->instance) < 0){
         if(*_debug){
-            printf("Instance %d, _modbus_tcp_connect(): \
+            printf("Inst %d, _modbus_tcp_connect(): \
 _tcp_client_connect() failed.\n", server->instance);
         }
 
-        if(!(ctx->error_recovery & MODBUS_ERROR_RECOVERY_LINK)){
-            DEBUG_printf("Instance %d, _modbus_tcp_connect(): call \
-_modbus_tcp_close()\n", server->instance);
-             _modbus_tcp_close(ctx);
-        }
+ // Now:
+        // server->error = ERR_IF or ERR_MEM;
+        _modbus_tcp_close(ctx);
         return -1;
     }
 
     while(server->error != ERR_OK){
-        if(ptv){
-            if(timeout_ms == 0){
-                if(*_debug){
-                    printf("Instance %d, _modbus_tcp_connect(): \
-Timeout!\n", server->instance);
-                }
+        if(server->error != ERR_CONN){
+            DEBUG_printf("Inst %d, _modbus_tcp_connect(): Error \"%s\"\n",
+                         server->instance, err_txt(server->error));
+            if(!(ctx->error_recovery & MODBUS_ERROR_RECOVERY_LINK)){
+                server->error = ERR_RST;
                 _modbus_tcp_close(ctx);
+            }
+            // Now:
+            // server->error = ERR_RST;
+            errno = ECONNRESET;
+            return -1;
+        }
+
+        if(ptv){
+            if(timeout_ms <= 0){
+                if(*_debug){
+                     printf("Inst %d, _modbus_tcp_connect(): Timeout!\n", server->instance);
+                }
+
+                server->error = ERR_TIMEOUT;
                 errno = ETIMEDOUT;
+                _modbus_tcp_close(ctx);
                 return -1;
             }
-            timeout_ms -= _WAIT_LOOP_INTERVAL_MS;
+            timeout_ms -= (_WAIT_LOOP_INTERVAL_MS * 100);
         }
-        sleep_ms(_WAIT_LOOP_INTERVAL_MS);
+        sleep_ms(_WAIT_LOOP_INTERVAL_MS * 100);
+        // busy_wait_ms(_WAIT_LOOP_INTERVAL_MS * 100);
     }
+
     if(*_debug && ptv){
         _show_timeout(server->instance, ptv, timeout_ms,
                       "_modbus_tcp_connect");
@@ -464,8 +476,7 @@ Timeout!\n", server->instance);
 
     if(server->error == ERR_OK){
         if(*_debug){
-            printf("Instance %d, _modbus_tcp_connect(): \
-connected to server %s:%d.\n",
+            printf("Inst %d, _modbus_tcp_connect(): connected to %s:%d.\n",
                    server->instance, server->ip, server->port);
         }
         server->connected = true;
@@ -473,15 +484,12 @@ connected to server %s:%d.\n",
         _modbus_tcp_flush(ctx);
         return(0);
     }
-    else{
+    else{ //TODO macht das Sinn? Kommt jemals ECONNREFUSED???
         errno = ECONNREFUSED;
         if(*_debug){
-            printf("Instance %d, _modbus_tcp_connect(): \
-ERROR %s\n", server->instance, strerror(errno));
+            printf("Inst %d, _modbus_tcp_connect(): ERROR %s\n",
+                   server->instance, strerror(errno));
         }
-        DEBUG_printf("Instance %d, _modbus_tcp_connect(): call \
-_modbus_tcp_close()\n", server->instance);
-
         _modbus_tcp_close(ctx);
         return -1;
     }
@@ -491,12 +499,12 @@ unsigned int _modbus_tcp_is_connected(modbus_t *ctx)
 {
     PICO_ASSERT("ctx != NULL", ctx != NULL);
 
-    DEBUG_printf("Instance: %d _modbus_tcp_is_connected()\n", ctx->s);
+    DEBUG_printf("Inst: %d _modbus_tcp_is_connected()\n", ctx->s);
 
     if(ctx->s < 0 && ctx->s >= MAX_PEERS){
         if(*_debug){
-            printf("Instance: %d  _modbus_tcp_is_connected() called for \
-invalid connection\n", ctx->s);
+            printf("Inst: %d  _modbus_tcp_is_connected(): void connection\n",
+                   ctx->s);
         }
         return FALSE;
     }
@@ -520,24 +528,20 @@ void _modbus_tcp_close(modbus_t *ctx)
     PICO_ASSERT("ctx != NULL", ctx != NULL);
     if(ctx->s < 0 && ctx->s >= MAX_PEERS){
         if(*_debug){
-            printf("_modbus_tcp_close() called for \
-invalid connection: %d\n", ctx->s);
+            printf("_modbus_tcp_close(): void connection: %d\n", ctx->s);
         }
         return;
     }
 
     if(peers[ctx->s] == NULL){
         if(*_debug){
-            printf("Instance %d,_modbus_tcp_close() called for \
-non-existant connection\n", ctx->s);
+            printf("Inst %d,_modbus_tcp_close(): non-existant connection\n",
+                   ctx->s);
         }
         return;
     }
 
-    DEBUG_printf("Instance %d, _modbus_tcp_close()\n",ctx->s);
-
     _cleanup_connection(ctx->s, "_modbus_tcp_close");
-
     return;
 }
 
@@ -547,20 +551,19 @@ static int _modbus_tcp_flush(modbus_t *ctx)
     PICO_ASSERT("ctx != NULL", ctx != NULL);
     if(ctx->s < 0 && ctx->s >= MAX_PEERS){
         if(*_debug){
-            printf("_modbus_tcp_flush() called for \
-invalid connection: %d\n", ctx->s);
+            printf("_modbus_tcp_flush(): void connection: %d\n", ctx->s);
         }
         return 0;
     }
     if(peers[ctx->s]->pcb == NULL){
         if(*_debug){
-            printf("Instance %d, _modbus_tcp_flush() called for \
-closed connection\n", ctx->s);
+            printf("Inst %d, _modbus_tcp_flush(): closed connection\n",
+                   ctx->s);
         }
         return 0;
     }
 
-    DEBUG_printf("Instance %d, _modbus_tcp_flush()\n", ctx->s);
+    DEBUG_printf("Inst %d, _modbus_tcp_flush()\n", ctx->s);
 
     int bytes_to_flush = peers[ctx->s]->recv_len;
     peers[ctx->s]->recv_len = 0;
@@ -600,40 +603,32 @@ closed connection\n", ctx->s);
 // errno used: EBADF, ETIMEDOUT, ECONNRESET
 
 static int
-_modbus_tcp_select(modbus_t *ctx, fd_set *rset, struct timeval *ptv, int length_to_read)
+_modbus_tcp_select(modbus_t *ctx,
+                   __unused fd_set *rset,
+                   struct timeval *ptv,
+                   __unused int length_to_read)
 {
     PICO_ASSERT("ctx != NULL", ctx != NULL);
+
     if(ctx->s < 0 && ctx->s >= MAX_PEERS){
         if(*_debug){
-            printf("_modbus_tcp_select() called for \
-invalid connection: %d\n", ctx->s);
+            printf("_modbus_tcp_select(): void connection: %d\n", ctx->s);
         }
         return -1;
     }
-    // PICO_ASSERT("peers[ctx->s] != NULL",
-    //             peers[ctx->s] != NULL);
     if(peers[ctx->s]->pcb == NULL){
         if(*_debug)
-            printf("Instance %d, _modbus_tcp_select() called for \
-non-existant connection\n", ctx->s);
+            printf("Inst %d, _modbus_tcp_select(): non-existant connection\n",
+                   ctx->s);
         errno = ECONNRESET;
         return(-1);
     }
 
-    DEBUG_printf("Instance %d, _modbus_tcp_select()\n", ctx->s);
+    DEBUG_printf("Inst %d, _modbus_tcp_select()\n", ctx->s);
     tcp_connection *peer = peers[ctx->s];
 
     int peerId = -1;
     int timeout_ms = 0;
-
-    // Internal test for ctx->s equals the value in rset only,
-    // should never happen
-    // TODO: remove after verfication!
-    // for (int i = 0; i < MAX_PEERS; i++) {
-    //     if(FD_ISSET(i, rset)){
-    //         peerId = i;
-    //     }
-    // }
 
     peerId = ctx->s;
 
@@ -642,8 +637,8 @@ non-existant connection\n", ctx->s);
     if(!peer->connected){
         // connectionclosed during a transmission
         if(*_debug){
-            printf("Instance %d, _modbus_tcp_select() called for \
-closed connection\n", ctx->s);
+            printf("Inst %d, _modbus_tcp_select(): closed connection\n",
+                   ctx->s);
         }
         errno = ECONNRESET;
         return(-1);
@@ -660,9 +655,8 @@ closed connection\n", ctx->s);
     while(peer->error == ERR_OK && peer->recv_len == 0){
         if(ptv){
            if(timeout_ms <= 0){
-                if(*_debug)
-                    printf("Instance %d, _modbus_tcp_select(): \
-Timeout!\n", ctx->s);
+                DEBUG_printf("Inst %d, _modbus_tcp_select(): \
+Timeout! Error: %s\n", ctx->s, err_txt(peer->error));
                 errno = ETIMEDOUT;
                 return -1;
             }
@@ -677,7 +671,7 @@ Timeout!\n", ctx->s);
 
     if(peer->error != ERR_OK){
         if(*_debug){
-            printf("Instance %d, _modbus_tcp_select(), Error %s\n",
+            printf("Inst %d, _modbus_tcp_select(), Error %s\n",
                peerId, err_txt(peer->error));
         }
         if(peer->error == ERR_RST || peer->error == ERR_ABRT){
@@ -697,11 +691,12 @@ static void _modbus_tcp_free(modbus_t *ctx)
 {
     for (int i = 0; i < MAX_PEERS; i++) {
         if(peers[i] != NULL){
-        _cleanup_connection(i, "_modbus_tcp_free");
-        _free_connection(peers[i]);
+            _cleanup_connection(i, "_modbus_tcp_free");
+            if(*_error_recovery & MODBUS_ERROR_RECOVERY_LINK){
+                _free_connection(peers[i]);
+            }
         }
     }
-
     free(ctx);
 }
 
@@ -748,9 +743,11 @@ const modbus_backend_t _modbus_tcp_backend = {
 // SERVER:
 // Callback for incoming connections ("accepted")
 // Handle the incoming TCP connection from a client
-static err_t accept_callback(void *arg, struct tcp_pcb *newpcb, err_t err) {
+static err_t accept_callback(__unused void *arg, struct tcp_pcb *newpcb, err_t err) {
     if (err != ERR_OK) {
-        DEBUG_printf("accept_callback(): Error accepting client connection: %d\n", err);
+        if(*_debug){
+            printf("accept_callback(): Error accepting client: %d\n", err);
+        }
         return ERR_MEM;  // Reject the connection
     }
 
@@ -759,6 +756,21 @@ static err_t accept_callback(void *arg, struct tcp_pcb *newpcb, err_t err) {
                newpcb->remote_port);
 
     for (int i = 0; i < MAX_PEERS; i++) {
+        // This should nevet be neccesary...
+        if (peers[i] != NULL && peers[i]->error != ERR_CLSD &&
+                (peers[i]->last_activity + (CLIENT_TIMEOUT * 1000)) <
+                (time_us_64() / 1000)) {
+
+            if(*_debug){
+                printf("accept_callback(): found idle client %d!\n", i);
+            }
+            if(_cleanup_connection(i, "accept_callback")){
+                if(*_debug){
+                    printf("accept_callback(), _cleanup_connection(): OK\n");
+                }
+            }
+        }
+
         if(peers[i] == NULL){
             DEBUG_printf("accept_callback(): New client, slot: %d\n", i);
 
@@ -784,21 +796,19 @@ static err_t accept_callback(void *arg, struct tcp_pcb *newpcb, err_t err) {
             tcp_err(newpcb,  error_callback);
             tcp_sent(newpcb, sent_callback);
             if(CLIENT_TIMEOUT > 0){
-                tcp_poll(newpcb, disconnect_idle_clients, 10);
+                tcp_poll(newpcb, poll_callback, 10);
             }
             tcp_arg(newpcb, (void *) client);
             cyw43_arch_lwip_end();
 
-            DEBUG_printf("accept_callback(): New client, \
-slot: %d READY\n", i);
+            DEBUG_printf("accept_callback(): New client, slot: %d READY\n", i);
             return ERR_OK;
         }
     }
 
     // No available slot for a new client, reject the connection
     if(*_debug)
-        printf("accept_callback(): Maximum peers reached, \
-rejecting connection.\n");
+        printf("accept_callback(): Max peers, rejecting connection.\n");
 
     cyw43_arch_lwip_begin();
     err_t rc =  tcp_close(newpcb);
@@ -810,12 +820,13 @@ rejecting connection.\n");
         cyw43_arch_lwip_begin();
         tcp_abort(newpcb);
         cyw43_arch_lwip_end();
+        return ERR_ABRT;
     }
 
     if(*_debug){
         printf("accept_callback(): Rejected new client\n");
     }
-    return ERR_ABRT;
+    return ERR_OK;
 }
 
 // CLIENT:
@@ -826,19 +837,23 @@ err_t connect_callback(void *arg, struct tcp_pcb *tpcb, err_t err){
 
     PICO_ASSERT("server != NULL",
                 server != NULL);
+
+    DEBUG_printf("Inst %d, connect_callback()\n",server->instance);
+
     PICO_ASSERT("server->pcb != NULL",
                 server->pcb != NULL);
-    PICO_ASSERT("server->connected == FALSE",
-                server->connected == FALSE);
 
-    tcp_connection *peer = (tcp_connection *)arg;
-    PICO_ASSERT("peer->pcb == tpcb",
-               peer->pcb == tpcb);
+    if( server->pcb != tpcb){
+        if(*_debug){
+            printf("server->pcb != tpcb\n");
+        }
+        server->error= ERR_CONN;
+        return ERR_CONN;
+    }
 
     if (err != ERR_OK) {
         if(*_debug){
-            printf("Instance %d, Error connectimg to server. \
-Error: %s\n",
+            printf("Inst %d, Error connectimg to server. Error: %s\n",
                 server->instance, err_txt(server->error));
         }
 
@@ -848,7 +863,7 @@ Error: %s\n",
     }
 
     server->error = ERR_OK;
-    DEBUG_printf("Instance %d, connect_callback() OK!\n", server->instance);
+    DEBUG_printf("Inst %d, connect_callback() OK!\n", server->instance);
 
     return ERR_OK;
 }
@@ -859,8 +874,7 @@ static err_t receive_callback(void *arg, struct tcp_pcb *pcb, struct pbuf *p, er
 
     if(arg == NULL){
         if(*_debug){
-            printf("receive_callback(), called for \
-non-existant or closed connection\n");
+            printf("receive_callback(), non-existant or closed connection\n");
         }
         if (p != NULL)
             pbuf_free(p);
@@ -868,33 +882,41 @@ non-existant or closed connection\n");
     }
 
     tcp_connection *peer = (tcp_connection *)arg;
+
     if(err != ERR_OK){
         if(*_debug){
-            printf("Instance %d, receive_callback(), error: %s\n", peer->instance, err_txt(err));
+            printf("Inst %d, receive_callback(), error: %s\n",
+                   peer->instance, err_txt(err));
         }
         if (p != NULL)
             pbuf_free(p);
         return ERR_OK;
     }
 
+    if(peer->connected == false){
+        if(*_debug){
+            printf("Inst %d, receive_callback(), connection  already closed\n",
+                   peer->instance);
+        }
+        return ERR_OK;
+    }
+
+
     PICO_ASSERT("peer->pcb != NULL",
                 peer->pcb != NULL);
-    PICO_ASSERT("peer->connected == TRUE",
-                peer->connected == TRUE);
     PICO_ASSERT("peer->pcb == pcb",
                 peer->pcb == pcb);
 
-    DEBUG_printf("Instance %d, receive_callback()\n", peer->instance);
+    DEBUG_printf("Inst %d, receive_callback()\n", peer->instance);
 
     if (p != NULL) {
          // Receive the buffer
-
         if (p->tot_len > 0) {
-            DEBUG_printf("Instance %d, receive_callback(), \
-initial recv_len: %d\n",
+            DEBUG_printf("Inst %d, receive_callback(), initial recv_len: %d\n",
                          peer->instance, peer->recv_len);
 
-            const uint16_t buffer_left = MODBUS_TCP_MAX_ADU_LENGTH - peer->recv_len;
+            const uint16_t buffer_left =
+                        MODBUS_TCP_MAX_ADU_LENGTH - peer->recv_len;
             if(p->tot_len <= buffer_left){
                 cyw43_arch_lwip_begin();
                 peer->recv_len +=
@@ -908,15 +930,15 @@ initial recv_len: %d\n",
                 cyw43_arch_lwip_end();
                 peer->error = ERR_OK;
                 // tcp_error[peer->instance] = ERR_OK;
-                DEBUG_printf("Instance %d, recv_len is now: %d\n",
+                DEBUG_printf("Inst %d, recv_len is now: %d\n",
                              peer->instance, peer->recv_len);
             }
             else{
                 peer->recv_len = 0;
                 peer->error = ERR_VAL;
                 if(*_debug){
-                    printf("Instance %d, receive_callback(), \
-message longer then buffer\n", peer->instance);
+                    printf("Inst %d, receive_callback(), message too long\n",
+                           peer->instance);
                 }
             }
             cyw43_arch_lwip_begin();
@@ -929,13 +951,12 @@ message longer then buffer\n", peer->instance);
         return ERR_OK;
     }
     else{ // p == NULL
-        DEBUG_printf(
-            "Instance %d, receive_callback(), connection closed. \
-Error %s\n", peer->instance, err_txt(err));
-
+        if(*_debug){
+            printf("Inst %d, receive_callback(), peer closed connection. %s\n",
+                   peer->instance, err_txt(err));
+        }
         _cleanup_connection(peer->instance, "receive_callback");
-
-        return ERR_OK;
+        return ERR_CLSD;
     }
 }
 
@@ -944,8 +965,7 @@ Error %s\n", peer->instance, err_txt(err));
 static err_t sent_callback(void *arg, struct tcp_pcb *pcb, u16_t len) {
     if(arg == NULL){
         if(*_debug){
-            printf("sent_callback() called for \
-non-existant connection\n");
+            printf("sent_callback() called for non-existant connection\n");
         }
         return ERR_OK;
     }
@@ -962,8 +982,7 @@ non-existant connection\n");
     PICO_ASSERT("peer->pcb == pcb",
                 peer->pcb == pcb);
 
-    DEBUG_printf("Instance %d, sent_callback(), \
-peer acknowleged %d bytes\n",
+    DEBUG_printf("Inst %d, sent_callback(), peer acknowleged %d bytes\n",
                  peer->instance, len);
 
     // Update the last activity time for this peer
@@ -976,76 +995,42 @@ peer acknowleged %d bytes\n",
 
 // SERVER
 // Callback for polling
-// check if a client has been idle for more than CLIENT_TIMEOUT msec
-static err_t disconnect_idle_clients(void *arg, struct tcp_pcb *pcb) {
-    if(*_debug){
-        _show_peers();
+// Closes a connection that has been idle for too long
+static err_t poll_callback(void *arg, __unused struct tcp_pcb *pcb) {
+     tcp_connection *client = ( tcp_connection *)arg;
+    if(client == NULL){
+        return ERR_OK;
     }
 
-    if(arg == NULL){
-        // This connection has been closed, or never fully started.
-        // It is save to disconnect it!
+    if (client->error != ERR_CLSD &&
+            (client->last_activity + (CLIENT_TIMEOUT * 1000)) <
+                (time_us_64() / 1000)) {
+
         if(*_debug){
-            printf("disconnect_idle_clients(NULL) called for \
-closed or never fully started connection\n");
+            printf("poll_callback(%d): timeout!\n", client->instance);
         }
 
-        cyw43_arch_lwip_begin();
-        err_t err =  tcp_close(pcb);
-        cyw43_arch_lwip_end();
-        if (err != ERR_OK) {
+        // No need to call _free_connection if MODBUS_ERROR_RECOVERY_LINK
+        // becouse this callback is for servers only and servers dont have
+        // MODBUS_ERROR_RECOVERY_LINK set
+        if(_cleanup_connection(client->instance, "poll_callback")){
             if(*_debug){
-                printf("disconnect_idle_clients(NULL): \
-tcp_close() failed\n");
+                printf("poll_callback(): OK\n");
             }
-            cyw43_arch_lwip_begin();
-            tcp_abort(pcb);
-            cyw43_arch_lwip_end();
-            return ERR_ABRT;
         }
-         return ERR_OK;
-    }
-    else{
-        DEBUG_printf("Disconnect_idle_clients %d [%s]\n",  ((tcp_connection *)arg)->instance, (( tcp_connection *)arg)->ip);
-    }
-
-    tcp_connection *client = ( tcp_connection *)arg;
-    PICO_ASSERT("client->instance >= 0 && client->instance < MAX_PEERS",
-                client->instance>= 0 && client->instance < MAX_PEERS);
-    PICO_ASSERT("client != NULL",
-                client->pcb == pcb);
-
-    if(client->error == ERR_CLSD){
-        if(*_debug){
-            printf("Instance %d, disconnect_idle_clients(): close already \
-in progress\n", client->instance);
-        }
-        return ERR_OK;
-    }
-
-    PICO_ASSERT("client->pcb != NULL",
-                client->pcb != NULL);
-    // last_activity is a timestamp in msec, CLIENT_TIMEOUT is in sec
-    if ((client->last_activity + (CLIENT_TIMEOUT * 1000)) < (time_us_64() / 1000)){
-        DEBUG_printf("Instance %d, client idle timeout\n",
-                   client->instance);
-
-        _cleanup_connection(client->instance, "disconnect_idle_clients");
-
-        return ERR_OK;
     }
     return ERR_OK;
 }
 
 // SERVER AND CLIENT -> aka "peer"
 // Callback for error handling
+// Manual: The corresponding pcb is already freed when this callback is called!
 static void error_callback(void *arg, err_t err) {
     // Clean up the peer on error
 
     if(arg != NULL){
         tcp_connection *peer = (tcp_connection *)arg;
-        DEBUG_printf("Instance %d, error_callback(): \
-TCP connection error %s\n",
+        DEBUG_printf("Inst %d, error_callback(): TCP connection error %s\n",
                      peer->instance, err_txt(err));
         PICO_ASSERT("peer->instance >= 0 && peer->instance < MAX_PEERS",
                     peer->instance >= 0 && peer->instance < MAX_PEERS);
@@ -1059,6 +1044,7 @@ TRIGGERED FOR CLOSED CONNECTION\n", err_txt(err));
         }
     }
 }
+
 /*************************************************************
  * END of LWIP callback functions
  *************************************************************/
@@ -1092,33 +1078,30 @@ modbus_t *tcp_server_init(int port) {
     // Create a new TCP control block
     cyw43_arch_lwip_begin();
     pcb = tcp_new();
-    cyw43_arch_lwip_end();
     if (pcb == NULL) {
         if(*_debug){
             printf("tcp_server_init(): Error creating PCB.\n");
         }
+        cyw43_arch_lwip_end();
         return NULL;
     }
 
     // Bind the server to the desired port
-    cyw43_arch_lwip_begin();
     err = tcp_bind(pcb, IP_ADDR_ANY, port);
-    cyw43_arch_lwip_end();
     if (err != ERR_OK) {
         if(*_debug){
-            printf("tcp_server_init(): \
-Error binding server to port %d.\n", port);
+            printf("tcp_server_init(): Error binding server to port %d.\n", port);
         }
+        cyw43_arch_lwip_end();
         return NULL;
     }
 
     // Set the listening callback function
-    cyw43_arch_lwip_begin();
     pcb = tcp_listen(pcb);
     tcp_accept(pcb, accept_callback);
     cyw43_arch_lwip_end();
-    DEBUG_printf("Server listening on port %d...\n", port);
 
+    DEBUG_printf("Server listening on port %d...\n", port);
     return ctx;
 }
 
@@ -1153,15 +1136,14 @@ modbus_t *tcp_client_init(void)
 
 // CLIENT:
 // Initialize the TCP client
-int tcp_new_client(char *server_ip, int port) {
+int tcp_new_client(const char *server_ip, int port) {
     for (int i = 0; i < MAX_PEERS; i++) {
         if(peers[i] == NULL){
 
             tcp_connection *server = malloc(sizeof(tcp_connection));
             if(server == NULL){
                 if(*_debug){
-                    printf("tcp_new_client(): Error creating \
-tcp_connection struct.\n");
+                    printf("tcp_new_client(): not enough memory.\n");
                 }
                 errno = ENOMEM;
                 return -1;
@@ -1187,6 +1169,7 @@ tcp_connection struct.\n");
     return -1;
 }
 
+int serialNum = 0;
 // CLIENT:
 // Connect to server
 static int _tcp_client_connect(int serverID) {
@@ -1195,19 +1178,21 @@ static int _tcp_client_connect(int serverID) {
     err_t err;
 
     tcp_connection *server = peers[serverID];
+    PICO_ASSERT("server != NULL", server != NULL);
 
     // Create a new TCP control block
-    DEBUG_printf("Instance %d, _tcp_client_connect(): \
-new server connection.\n", serverID);
+    DEBUG_printf("Inst %d, _tcp_client_connect(): new server connection.\n",
+                 serverID);
 
     cyw43_arch_lwip_begin();
     pcb = tcp_new();
     cyw43_arch_lwip_end();
     if (pcb == NULL) {
         if(*_debug){
-            printf("Instance %d, _tcp_client_connect(): \
-Error creating PCB.\n", serverID);
+            printf("Inst %d, _tcp_client_connect(): Error creating PCB.\n",
+                   serverID);
         }
+        server->error = ERR_MEM;
         errno = ENOMEM;
         return -1;
     }
@@ -1215,11 +1200,10 @@ Error creating PCB.\n", serverID);
     server->pcb 			= pcb;
     server->error 			= ERR_CONN;
 
-    DEBUG_printf("Instance %d, trying to connect to server %s:%d\n",
+    DEBUG_printf("Inst %d, trying to connect to server %s:%d\n",
            serverID, server->ip, server->port);
 
     ip4addr_aton(server->ip, &server_addr);
-
     cyw43_arch_lwip_begin();
     tcp_recv(pcb, receive_callback);
     tcp_err(pcb,  error_callback);
@@ -1232,11 +1216,10 @@ Error creating PCB.\n", serverID);
 
     if (err != ERR_OK) {
         if(*_debug){
-            printf("Instance %d, error connecting to server \
-%s:%d. %s\n",
+            printf("Inst %d, error connecting to server %s:%d. %s\n",
                      serverID, server->ip, server->port, err_txt(ERR_IF));
         }
-       _cleanup_connection(serverID, "_tcp_client_connect");
+        server->error = ERR_IF;
         errno = ENOTCONN;
         return -1;
     }
@@ -1258,17 +1241,14 @@ int _send(int ctx_s, void *buf, size_t len) {
                 ctx_s >= 0 && ctx_s < MAX_PEERS);
     PICO_ASSERT("peers[ctx_s] != NULL",
                 peers[ctx_s] != NULL);
-    PICO_ASSERT("peers[ctx_s]->pcb != NULL",
-                peers[ctx_s]->pcb != NULL);
-    PICO_ASSERT("peers[ctx_s]->connected == TRUE",
-                peers[ctx_s]->connected == TRUE);
 
     peer = peers[ctx_s];
-    DEBUG_printf("Instance %d, _send()\n", peer->instance);
+    DEBUG_printf("Inst %d, _send()\n", peer->instance);
 
     if(peer->error == ERR_CLSD){
-        DEBUG_printf("Instance %d, _send(), connection is closing\n",
+        DEBUG_printf("Inst %d, _send(), connection is closing\n",
                      peer->instance);
+        errno = ECONNRESET;
         return -1;
     }
 
@@ -1317,12 +1297,29 @@ int modbus_is_connected(int peer_id){
     }
 }
 
+// SERVER and CLIENT
+char* modbus_get_ip(int peer_id){
+    if(peer_id >= 0 && peer_id < MAX_PEERS &&
+        peers[peer_id] != NULL ){
+    return peers[peer_id]->ip;
+    }
+    else{
+        return NULL;
+    }
+}
+// SERVER and CLIENT
+int modbus_get_id(modbus_t *ctx){
+    PICO_ASSERT("ctx != NULL", ctx != NULL);
+
+    return ctx->s;
+}
+
 // SERVER
 /* Checks whether there is an existing connection under client_id.
  * If so, checks whether the client has sent a request or
  * whether an error has occurred (e.g., the client has disconnected).
  *
- * Return values:           *
+ * Return values:
  * >0 Nuber of bytes received so far
  * 0 No request
  * <0 An error has occurred. The returned value is a LWIP-error
@@ -1398,10 +1395,8 @@ bool _modbus_tcp_message(modbus_t *ctx, const uint8_t *req, modbus_message_t *ms
     return true;
 }
 
-// Check whether the request has modified any data in one of
-// the Modbus tables. In other words, check if it was a write
-// (or read/write)operation rather than a read-only one.
-// If so, push a message for core 0 into the FIFO.
+// If the request has modified any data in one of
+// the Modbus tables, push a message for core 0 into the FIFO.
 void modbus_notify_if_write(modbus_t *ctx,
                              const uint8_t *req,
                              modbus_message_t *msg)
@@ -1422,7 +1417,6 @@ modbus_message_t *modbus_write_notify(void)
         return NULL;
     }
 }
-
 
 void modbus_tcp_mapping_lock(modbus_t *ctx)
 {
@@ -1499,80 +1493,74 @@ char *err_txt(int err){
     return err_str[-err];
 }
 
-void _cleanup_connection(int peerID, char *context){
+bool _cleanup_connection(int peerID, char *context){
+
+    DEBUG_printf("Inst %d: _cleanup_connection(from %s)\n", peerID, context);
+
     PICO_ASSERT("peerID >= 0 && peerID < MAX_PEERS",
                     peerID >= 0 && peerID < MAX_PEERS);
 
     tcp_connection *peer = peers[peerID];
     if(peer == NULL){
-        DEBUG_printf("Instance %d (%s): _cleanup_connection(): \
-connection already deleted.\n", peerID, context);
-        return;
+        DEBUG_printf("Inst %d: _cleanup_connection(from %s): \
+already deleted.\n", peerID, context);
+        return true;
     }
-
-    if(peer->error == ERR_CLSD){
-        DEBUG_printf("Instance %d (%s): _cleanup_connection(): \
-close already in progress.\n", peerID, context);
-        return;
+    if(peer->pcb == NULL){
+        DEBUG_printf("Inst %d: _cleanup_connection(from %s): \
+pcb already deleted.\n", peerID, context);
     }
+    DEBUG_printf("Inst %d: _cleanup_connection(from %s): \
+error \"%s\".\n", peerID, context, err_txt(peer->error));
 
-    peer->error = ERR_CLSD;
-    peer->connected = FALSE;
-    peers[peerID]->error = ERR_CLSD;
-
-    if(peers[peerID]->pcb != NULL){
+    if(peer->pcb != NULL && peer->error != ERR_CLSD && peer->error != ERR_RST){
+        DEBUG_printf("Inst %d: _cleanup_connection(from %s): \
+deleting pcb.\n", peerID, context);
         cyw43_arch_lwip_begin();
-
         //TODO Clean-up after verfication
         tcp_arg(peer->pcb, (void *) NULL);
-        // tcp_recv(peer->pcb, NULL);
-        // tcp_sent(peer->pcb, NULL);
-        tcp_poll(peer->pcb, NULL, 0);
-        // tcp_err(peer->pcb, NULL);
+        tcp_recv(peer->pcb, NULL);
+        tcp_sent(peer->pcb, NULL);
+        tcp_err(peer->pcb, NULL);
 
-        DEBUG_printf("Instance %d (%s): _cleanup_connection(): \
-about to call tcp_close()\n", peerID, context);
         err_t err =  tcp_close(peer->pcb);
-        DEBUG_printf("Instance %d (%s): _cleanup_connection(): \
-tcp_close() called\n", peerID, context);
         cyw43_arch_lwip_end();
 
         if (err != ERR_OK) {
             if(*_debug){
-                printf("Instance %d (%s): _cleanup_connection(): \
+                printf("Inst %d (from %s): _cleanup_connection(): \
 tcp_close() failed\n", peerID, context);
             }
-            cyw43_arch_lwip_begin();
-            tcp_abort(peer->pcb);
-            cyw43_arch_lwip_end();
+            return false;
         }
-    }
-    else
-        if(*_debug){
-            printf("Instance %d (%s):_cleanup_connection(): \
-tcp was NOT connected!\n", peerID, context);
-        }
-
-    // TODO only if NOT MODBUS_ERROR_RECOVERY_LINK!!!
-    if(*_error_recovery & MODBUS_ERROR_RECOVERY_LINK){
-        peer->error = ERR_CLSD;
     }
     else{
-        _free_connection(peer);
+        DEBUG_printf("Inst %d: _cleanup_connection(from %s): \
+pcb NOT deleted.\n", peerID, context);
     }
+
+    peer->pcb = NULL;
+    peer->error = ERR_CLSD;
+    peer->connected = FALSE;
+
+    if(!(*_error_recovery & MODBUS_ERROR_RECOVERY_LINK)){
+        DEBUG_printf("Inst %d: _cleanup_connection(from %s): \
+calling _free_connection().\n", peerID, context);
+         _free_connection(peer);
+    }
+    else{
+        DEBUG_printf("Inst %d: _cleanup_connection(from %s): \
+NOT calling _free_connection().\n", peerID, context);
+    }
+    return true;
 }
 
 // SERVER AND CLIENT -> aka "peer"
 err_t _free_connection(tcp_connection *peer) {
-    if(peer == NULL){
-        if(*_debug){
-            printf("_free_connection(), peer has already \
-been destroyed\n");
-        }
-        return ERR_OK;
-    }
-    DEBUG_printf("Instance %d, free connection, last error was: %s\n",
-                peer->instance, err_txt(peer->error));
+    PICO_ASSERT("peer != NULL", peer != NULL);
+
+    DEBUG_printf("Inst %d, free connection, last error was: %s\n",
+                 peer->instance, err_txt(peer->error));
 
     int client_id = peer->instance;
     free(peers[client_id]);
@@ -1591,36 +1579,22 @@ void _show_timeout(int id, struct timeval *ptv, int remaining_ms, char *context)
     timeout_ms =  ptv->tv_sec * 1000;
     timeout_ms += ptv->tv_usec / 1000;
 
-    printf("Instance %d, _show_timeout(), \"%s\" \
+    printf("Inst %d, _show_timeout(), (from %s) \
 timeout: %d, remaining: %d elapsed:%d\n",
            id, context, timeout_ms, remaining_ms, timeout_ms - remaining_ms);
 }
 
 void _show_peers(void){
-    printf("\n");
+
     for(int i = 0; i < MAX_PEERS; i++){
         if(peers[i]){
             int64_t ttl; // time (in ms) until timeout occures
             ttl = peers[i]->last_activity + (CLIENT_TIMEOUT * 1000);
             ttl -= (time_us_64() / 1000);
-
-
             printf("%d: %s (TTL: %lld[s]) \n", i, peers[i]->ip, ttl / 1000);
-
-            // printf("LA:%llu Time:%llu Elapsed:%llu ",
-            //     peers[i]->last_activity,
-            //     time_us_64() / 1000,
-            //     ((time_us_64() / 1000) - peers[i]->last_activity));
-            //
-            // printf("TO:%d TTL:%lld\n", (CLIENT_TIMEOUT * 1000), ttl);
-            //
-
-            PICO_ASSERT("ttl <= (CLIENT_TIMEOUT * 1000)",
-                        ttl <= (CLIENT_TIMEOUT * 1000));
         }
         else{
             printf("%d: available\n", i);
         }
     }
-    printf("\n");
 }

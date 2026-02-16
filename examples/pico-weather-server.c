@@ -109,6 +109,7 @@ void init_network() {
 
 void init_MbServer(void)
 {
+    int32_t height = 153;   // Europe, Vienna, Aspern :-)
 
     // Allocate memory for the 4 Modbus tabels.
     mb_mapping =
@@ -120,9 +121,16 @@ void init_MbServer(void)
         return;
     }
 
+    mb_mapping->tab_bits[0] = 0;    // °C
+    mb_mapping->tab_registers[0] = height;
+
     // Start the server and create the libmodbus context.
     ctx = tcp_server_init(502);
+#ifdef DEBUG
+    modbus_set_debug(ctx, TRUE);
+#else
     modbus_set_debug(ctx, FALSE);
+#endif
 
     if (ctx == NULL) {
         printf("Unable to allocate libmodbus context\n");
@@ -205,10 +213,10 @@ void main(void) {
 
     // useful information for picotool
     bi_decl(bi_2pins_with_func(PICO_DEFAULT_I2C_SDA_PIN, PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C));
-    bi_decl(bi_program_description("weather server example for the Raspberry Pi Pico V1.1"));
+    bi_decl(bi_program_description("weather server example for the Raspberry Pi Pico V1.3"));
 
     stdio_init_all();
-    printf("Modbus Weather Station V1.1\n");
+    printf("Modbus Weather Station V1.3\n");
 
     // Initialize the network
     init_network();
@@ -216,16 +224,13 @@ void main(void) {
     // Initialize Wi-Fi
     init_wifi();
 
+    initializeBme280();
+
     // Initialize the ModBus-Server
     init_MbServer();
-
     // Run the ModBus-Server
     multicore_launch_core1(runMbServer);
 
-    mb_mapping->tab_bits[0] = 0;    // °C
-    mb_mapping->tab_registers[0] = height;
-
-    initializeBme280();
     for(;;){
         /*
          * Check if the client has sent some data (Holding Registers or Coils)

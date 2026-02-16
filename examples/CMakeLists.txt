@@ -6,7 +6,7 @@ add_executable(pico-hello-server
 )
 target_compile_definitions(pico-hello-server PRIVATE
     PICO_W              # for libmodbus
-    DEBUG               # to enable debuging output in the application
+    # DEBUG               # to enable debuging output in the application
     # PICO_TCP_DEBUG      # to enable debuging output in modbus-pico-tcp.c
     PICO_TCP_ASSERT     # to enable internal tests in modbus-pico-tcp.c
 )
@@ -33,7 +33,7 @@ add_executable(pico-hello-client
 )
 target_compile_definitions(pico-hello-client PRIVATE
     PICO_W              # for libmodbus
-    DEBUG               # to enable debuging output in the application
+    # DEBUG               # to enable debuging output in the application
     # PICO_TCP_DEBUG      # to enable debuging output in modbus-pico-tcp.c
     PICO_TCP_ASSERT     # to enable internal tests in modbus-pico-tcp.c
 )
@@ -60,7 +60,7 @@ add_executable(pico-server-example
 )
 target_compile_definitions(pico-server-example PRIVATE
     PICO_W              # for libmodbus
-    DEBUG               # to enable debuging output in the application
+    # DEBUG               # to enable debuging output in the application
     # PICO_TCP_DEBUG      # to enable debuging output in modbus-pico-tcp.c
     PICO_TCP_ASSERT     # to enable internal tests in modbus-pico-tcp.c
 )
@@ -92,7 +92,7 @@ add_executable(pico-weather-server
 )
 target_compile_definitions(pico-weather-server PRIVATE
     PICO_W              # for libmodbus
-    DEBUG               # to enable debuging output in the application
+    # DEBUG               # to enable debuging output in the application
     # PICO_TCP_DEBUG      # to enable debuging output in modbus-pico-tcp.c
     PICO_TCP_ASSERT     # to enable internal tests in modbus-pico-tcp.c
 )
